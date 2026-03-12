@@ -14,17 +14,16 @@
         import { getFirestore, doc, setDoc, onSnapshot, collection, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
-        // Global variables provided by the environment
         const firebaseConfig = JSON.parse(__firebase_config);
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'terapias-default';
         
-        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
 
         // --- Estado de la aplicación ---
-        let patients = [];
+        // Intentar cargar de localStorage inmediatamente para agilidad
+        let patients = JSON.parse(localStorage.getItem('terapia_cache') || '[]');
         let currentFilter = 'all';
         let currentView = 'list';
         let activePatientId = null;
@@ -47,6 +46,9 @@
 
         // --- Lógica de Sincronización ---
         async function syncToCloud(updatedPatients) {
+            // Guardar en caché local primero para respuesta instantánea
+            localStorage.setItem('terapia_cache', JSON.stringify(updatedPatients));
+            
             if (!currentUser) return;
             try {
                 const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'appState', 'main');
@@ -139,7 +141,6 @@
 
         window.setFilter = (filter) => {
             currentFilter = filter;
-            // Update UI for filter buttons
             document.querySelectorAll('.filter-btn').forEach(btn => {
                 const isActive = btn.getAttribute('data-filter') === filter;
                 btn.className = isActive 
@@ -300,7 +301,7 @@
             renderAll();
         };
 
-        // --- Inicialización y Auth ---
+        // --- Inicialización y Auth Optimizado ---
         const initAuth = async () => {
             if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                 await signInWithCustomToken(auth, __initial_auth_token);
@@ -309,30 +310,31 @@
             }
         };
 
+        // Renderizar inicial desde caché para agilidad instantánea
+        renderAll();
+
         onAuthStateChanged(auth, (user) => {
             currentUser = user;
             if (user) {
                 const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'appState', 'main');
+                // Escuchar cambios pero no bloquear la interfaz
                 onSnapshot(docRef, (snapshot) => {
                     if (snapshot.exists()) {
                         const cloudData = snapshot.data();
-                        patients = cloudData.patients || [];
-                        renderAll();
-                        document.getElementById('syncStatus').innerText = "Nube Conectada";
-                    } else {
-                        const oldData = localStorage.getItem('terapia_patients');
-                        if (oldData) {
-                            patients = JSON.parse(oldData);
-                            syncToCloud(patients);
-                            localStorage.removeItem('terapia_patients');
-                            showToast("Datos locales migrados a la nube");
-                        } else {
-                            fetchSheetData();
+                        // Solo actualizar si hay cambios reales para evitar parpadeos
+                        if (JSON.stringify(cloudData.patients) !== JSON.stringify(patients)) {
+                            patients = cloudData.patients || [];
+                            localStorage.setItem('terapia_cache', JSON.stringify(patients));
+                            renderAll();
                         }
+                        document.getElementById('syncStatus').innerText = "Nube Conectada";
+                    } else if (patients.length === 0) {
+                        // Si no hay nada ni en nube ni en caché, traer de Excel
+                        fetchSheetData();
                     }
                 }, (error) => {
                     console.error("Error en Snapshot:", error);
-                    document.getElementById('syncStatus').innerText = "Error de Conexión";
+                    document.getElementById('syncStatus').innerText = "Modo Local";
                 });
             } else {
                 initAuth();
@@ -343,7 +345,7 @@
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; -webkit-tap-highlight-color: transparent; }
         .view-btn-active { background-color: white !important; color: #2563eb !important; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
         .view-btn-inactive { color: #64748b !important; }
         .therapy-badge { display: flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 8px; border: 1px solid; font-size: 10px; font-weight: 800; }
@@ -351,7 +353,7 @@
             visibility: hidden; min-width: 250px; margin-left: -125px; background-color: #1e293b;
             color: #fff; text-align: center; border-radius: 16px; padding: 16px;
             position: fixed; z-index: 100; left: 50%; bottom: 30px; font-size: 14px;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); transition: 0.3s;
         }
         #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
         @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
@@ -368,7 +370,7 @@
                 <h1 class="text-3xl font-bold text-slate-800 tracking-tight">Gestión Terapéutica</h1>
                 <div class="flex items-center gap-2">
                     <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <p class="text-slate-500 font-medium text-sm" id="syncStatus">Conectando...</p>
+                    <p class="text-slate-500 font-medium text-sm" id="syncStatus">Listo</p>
                 </div>
             </div>
             <div class="flex gap-2">
@@ -390,11 +392,11 @@
                 </button>
             </div>
 
-            <div class="flex gap-2 overflow-x-auto pb-2 md:pb-0">
-                <button onclick="setFilter('all')" data-filter="all" class="filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-blue-600 text-white shadow-md transition">Todos</button>
-                <button onclick="setFilter('lun_mie')" data-filter="lun_mie" class="filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-white text-slate-500 border border-slate-200 hover:border-blue-200 transition">Lun-Mie</button>
-                <button onclick="setFilter('circasia')" data-filter="circasia" class="filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-white text-slate-500 border border-slate-200 hover:border-blue-200 transition">Circasia</button>
-                <button onclick="setFilter('otros')" data-filter="otros" class="filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-white text-slate-500 border border-slate-200 hover:border-blue-200 transition">Otros</button>
+            <div class="flex gap-2 overflow-x-auto pb-2 md:pb-0 no-scrollbar">
+                <button onclick="setFilter('all')" data-filter="all" class="filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-blue-600 text-white shadow-md transition whitespace-nowrap">Todos</button>
+                <button onclick="setFilter('lun_mie')" data-filter="lun_mie" class="filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-white text-slate-500 border border-slate-200 hover:border-blue-200 transition whitespace-nowrap">Lun-Mie</button>
+                <button onclick="setFilter('circasia')" data-filter="circasia" class="filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-white text-slate-500 border border-slate-200 hover:border-blue-200 transition whitespace-nowrap">Circasia</button>
+                <button onclick="setFilter('otros')" data-filter="otros" class="filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-white text-slate-500 border border-slate-200 hover:border-blue-200 transition whitespace-nowrap">Otros</button>
             </div>
         </div>
 
