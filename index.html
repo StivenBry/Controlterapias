@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Terapias - Sincronización Total</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.0/lucide.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); transition: all 0.2s; }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); }
+        .view-btn-active { background-color: white !important; color: #2563eb !important; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+        .view-btn-inactive { color: #64748b !important; }
+        #toast {
+            visibility: hidden; min-width: 250px; margin-left: -125px; background-color: #334155;
+            color: #fff; text-align: center; border-radius: 12px; padding: 16px;
+            position: fixed; z-index: 100; left: 50%; bottom: 30px; font-size: 14px;
+            font-weight: 600;
+        }
+        #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
+        @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
+        @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div id="toast">Datos guardados en la nube</div>
+
+    <div class="max-w-6xl mx-auto">
+        <!-- Configuración de Enlace Drive con Instrucciones Claras -->
+        <div class="mb-8 p-6 bg-white rounded-3xl border border-slate-200 shadow-sm">
+            <h2 class="text-sm font-bold text-slate-800 mb-2 flex items-center gap-2">
+                <i data-lucide="link" class="w-4 h-4 text-blue-600"></i> Enlace de Google Sheets (Publicado como CSV)
+            </h2>
+            <p class="text-xs text-slate-500 mb-4">No guardes el archivo como .csv en Drive. Usa: <b>Archivo > Compartir > Publicar en la Web > CSV</b> y pega el link aquí.</p>
+            <div class="flex flex-col md:flex-row gap-3">
+                <input type="text" id="sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv" 
+                       class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <button onclick="syncFromSheets()" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-blue-700 transition flex items-center justify-center gap-2">
+                    <i data-lucide="refresh-cw" class="w-4 h-4" id="sync-icon"></i> Sincronizar Excel
+                </button>
+            </div>
+        </div>
+
+        <!-- Header -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-800 tracking-tight">Control de Pacientes</h1>
+                <p class="text-slate-500 font-medium" id="status-text">Conectando con la base de datos...</p>
+            </div>
+            <div class="flex bg-slate-100 p-1.5 rounded-2xl w-fit shadow-inner">
+                <button id="btn-view-list" onclick="switchView('list')" class="px-6 py-2 rounded-xl text-sm font-bold transition view-btn-active">Pacientes</button>
+                <button id="btn-view-calendar" onclick="switchView('calendar')" class="px-6 py-2 rounded-xl text-sm font-bold transition view-btn-inactive">Agenda</button>
+            </div>
+        </div>
+
+        <div id="view-list" class="block">
+            <div id="patientsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </div>
+
+        <div id="view-calendar" class="hidden">
+            <div class="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm">
+                <h2 class="text-xl font-bold text-slate-800 mb-4">Citas Programadas</h2>
+                <div id="calendarContent" class="space-y-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        // Correction: Import Firestore functions from firebase-firestore.js
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // Correction: Import Auth functions from firebase-auth.js
+        import { getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        // Firebase Config
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-terapia-app';
+
+        let currentUser = null;
+        let cloudData = {};
+
+        // Auth initialization
+        const initAuth = async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Auth error:", error);
+            }
+        };
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                setupPersistence();
+            }
+        });
+
+        function setupPersistence() {
+            if (!currentUser) return;
+            const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'appData', 'state');
+            onSnapshot(docRef, (snapshot) => {
+                if (snapshot.exists()) {
+                    cloudData = snapshot.data();
+                    if (window.patients.length > 0) applyCloudData();
+                }
+                document.getElementById('status-text').innerText = "Sincronizado con la nube";
+            }, (error) => console.error("Firestore error:", error));
+        }
+
+        window.saveState = async () => {
+            if (!currentUser) return;
+            const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'appData', 'state');
+            const dataToSave = {};
+            window.patients.forEach(p => {
+                dataToSave[p.uniqueId] = {
+                    horario: p.horario,
+                    completadas: p.completadas
+                };
+            });
+            try {
+                await setDoc(docRef, dataToSave);
+                showToast("Progreso guardado");
+            } catch (e) {
+                console.error("Save error:", e);
+            }
+        };
+
+        window.applyCloudData = () => {
+            window.patients.forEach(p => {
+                if (cloudData[p.uniqueId]) {
+                    p.horario = cloudData[p.uniqueId].horario || "";
+                    p.completadas = cloudData[p.uniqueId].completadas || 0;
+                }
+            });
+            renderPatients();
+            renderCalendar();
+        };
+
+        initAuth();
+    </script>
+
+    <script>
+        window.patients = [];
+        let currentView = 'list';
+        
+        function initIcons() { if (window.lucide) lucide.createIcons(); }
+
+        async function syncFromSheets() {
+            const url = document.getElementById('sheetUrl').value;
+            if (!url) return;
+            
+            const syncIcon = document.getElementById('sync-icon');
+            syncIcon.classList.add('animate-spin');
+            
+            localStorage.setItem('saved_sheet_url', url);
+            
+            Papa.parse(url, {
+                download: true,
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    processData(results.data);
+                    syncIcon.classList.remove('animate-spin');
+                    showToast("Sincronización exitosa");
+                },
+                error: function(err) {
+                    syncIcon.classList.remove('animate-spin');
+                    alert("Error al leer el Excel. Verifica que esté publicado como CSV.");
+                }
+            });
+        }
+
+        function processData(data) {
+            window.patients = data.filter(row => row.Nombre || row.Paciente).map((row, index) => {
+                const nombre = row.Nombre || row.Paciente;
+                // Intentar detectar columnas de sesiones
+                const tFisica = parseInt(row['T. FISICA'] || row['FISICA'] || 0);
+                const tOcupacional = parseInt(row['T. OCUPACIONAL'] || row['OCUPACIONAL'] || 0);
+                const tRespira = parseInt(row['T.RESPIRA'] || row['RESPIRATORIA'] || 0);
+                
+                return {
+                    id: index,
+                    uniqueId: btoa(nombre).substring(0, 15), // ID basado en nombre
+                    nombre: nombre,
+                    direccion: row.Direccion || row.Dirección || row.Ciudad || "",
+                    horario: "",
+                    completadas: 0,
+                    totalSesiones: tFisica + tOcupacional + tRespira
+                };
+            });
+            if (window.applyCloudData) window.applyCloudData();
+        }
+
+        function renderPatients() {
+            const grid = document.getElementById('patientsGrid');
+            if (window.patients.length === 0) {
+                grid.innerHTML = '<div class="col-span-full text-center py-10 text-slate-400 italic">No hay datos. Pega el link arriba y sincroniza.</div>';
+                return;
+            }
+
+            grid.innerHTML = window.patients.map(p => {
+                const perc = p.totalSesiones > 0 ? Math.round((p.completadas / p.totalSesiones) * 100) : 0;
+                return `
+                    <div class="card p-6 border border-slate-100 flex flex-col h-full">
+                        <div class="flex-grow">
+                            <h3 class="font-bold text-slate-800 truncate text-lg">${p.nombre}</h3>
+                            <p class="text-xs text-slate-400 mb-4 truncate">${p.direccion}</p>
+                            <div class="flex gap-2 mb-4">
+                                <div class="flex-1">
+                                    <label class="text-[10px] font-bold text-slate-400 uppercase">Hora de Cita</label>
+                                    <input type="text" value="${p.horario}" onchange="updateLocal(${p.id}, 'horario', this.value)" 
+                                           class="w-full bg-slate-50 border border-slate-100 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-200 outline-none" placeholder="Ej: 08:30 AM">
+                                </div>
+                                <div class="flex items-end">
+                                    <button onclick="addSession(${p.id})" class="bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-emerald-600 transition">+1 Visita</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-auto pt-4 border-t border-slate-50">
+                            <div class="flex justify-between text-[10px] mb-2 font-black text-slate-500">
+                                <span>SESIONES REALIZADAS</span>
+                                <span>${p.completadas} / ${p.totalSesiones}</span>
+                            </div>
+                            <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                <div class="bg-blue-500 h-full transition-all duration-500" style="width:${perc}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            initIcons();
+        }
+
+        function renderCalendar() {
+            const content = document.getElementById('calendarContent');
+            const scheduled = window.patients.filter(p => p.horario).sort((a, b) => a.horario.localeCompare(b.horario));
+            
+            if (scheduled.length === 0) {
+                content.innerHTML = '<p class="text-center text-slate-400 py-10 italic">No hay pacientes con hora asignada hoy.</p>';
+                return;
+            }
+
+            content.innerHTML = scheduled.map(p => `
+                <div class="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <div class="bg-blue-600 text-white font-bold px-3 py-2 rounded-xl text-sm min-w-[80px] text-center shadow-sm">
+                        ${p.horario}
+                    </div>
+                    <div class="flex-1 truncate">
+                        <div class="font-bold text-slate-800 text-sm truncate">${p.nombre}</div>
+                        <div class="text-[10px] text-slate-400 truncate">${p.direccion}</div>
+                    </div>
+                    <button onclick="addSession(${p.id})" class="p-2 text-emerald-600 hover:bg-emerald-50 rounded-full transition">
+                        <i data-lucide="check-circle-2" class="w-6 h-6"></i>
+                    </button>
+                </div>
+            `).join('');
+            initIcons();
+        }
+
+        function updateLocal(id, field, val) {
+            window.patients[id][field] = val;
+            if (window.saveState) window.saveState();
+            if (field === 'horario') renderCalendar();
+        }
+
+        function addSession(id) {
+            if (window.patients[id].completadas < window.patients[id].totalSesiones) {
+                window.patients[id].completadas++;
+                if (window.saveState) window.saveState();
+            } else {
+                showToast("¡Todas las sesiones completadas!");
+            }
+        }
+
+        function switchView(view) {
+            currentView = view;
+            document.getElementById('view-list').classList.toggle('hidden', view !== 'list');
+            document.getElementById('view-calendar').classList.toggle('hidden', view !== 'calendar');
+            
+            document.getElementById('btn-view-list').className = view === 'list' ? "px-6 py-2 rounded-xl text-sm font-bold transition view-btn-active" : "px-6 py-2 rounded-xl text-sm font-bold transition view-btn-inactive";
+            document.getElementById('btn-view-calendar').className = view === 'calendar' ? "px-6 py-2 rounded-xl text-sm font-bold transition view-btn-active" : "px-6 py-2 rounded-xl text-sm font-bold transition view-btn-inactive";
+            
+            if (view === 'calendar') renderCalendar();
+        }
+
+        function showToast(m) {
+            const t = document.getElementById("toast");
+            t.innerText = m; t.className = "show";
+            setTimeout(() => t.className = "", 3000);
+        }
+
+        window.onload = () => {
+            const url = localStorage.getItem('saved_sheet_url');
+            if (url) {
+                document.getElementById('sheetUrl').value = url;
+                syncFromSheets();
+            }
+            initIcons();
+        };
+    </script>
+</body>
+</html>
