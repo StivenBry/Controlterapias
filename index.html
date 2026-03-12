@@ -39,8 +39,8 @@
             <div class="flex flex-col md:flex-row gap-3">
                 <input type="text" id="sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv" 
                        class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <button onclick="syncFromSheets()" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-blue-700 transition flex items-center justify-center gap-2">
-                    <i data-lucide="refresh-cw" class="w-4 h-4" id="sync-icon"></i> Sincronizar Excel
+                <button onclick="manualSync()" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-blue-700 transition flex items-center justify-center gap-2">
+                    <i data-lucide="refresh-cw" class="w-4 h-4" id="sync-icon"></i> Sincronizar y Guardar Link
                 </button>
             </div>
         </div>
@@ -72,9 +72,7 @@
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        // Correction: Import Firestore functions from firebase-firestore.js
         import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        // Correction: Import Auth functions from firebase-auth.js
         import { getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
         // Firebase Config
@@ -113,6 +111,13 @@
             onSnapshot(docRef, (snapshot) => {
                 if (snapshot.exists()) {
                     cloudData = snapshot.data();
+                    
+                    // Si hay un link guardado en la nube y el input está vacío, lo cargamos
+                    if (cloudData.config && cloudData.config.sheetUrl && !document.getElementById('sheetUrl').value) {
+                        document.getElementById('sheetUrl').value = cloudData.config.sheetUrl;
+                        window.syncFromSheets(cloudData.config.sheetUrl);
+                    }
+
                     if (window.patients.length > 0) applyCloudData();
                 }
                 document.getElementById('status-text').innerText = "Sincronizado con la nube";
@@ -122,19 +127,32 @@
         window.saveState = async () => {
             if (!currentUser) return;
             const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'appData', 'state');
-            const dataToSave = {};
+            
+            // Mantener la configuración existente si existe
+            const config = cloudData.config || { sheetUrl: document.getElementById('sheetUrl').value };
+            
+            const dataToSave = { config: config };
             window.patients.forEach(p => {
                 dataToSave[p.uniqueId] = {
                     horario: p.horario,
                     completadas: p.completadas
                 };
             });
+            
             try {
                 await setDoc(docRef, dataToSave);
                 showToast("Progreso guardado");
             } catch (e) {
                 console.error("Save error:", e);
             }
+        };
+
+        // Función para guardar específicamente el link
+        window.saveSheetLink = async (url) => {
+            if (!currentUser) return;
+            const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'appData', 'state');
+            cloudData.config = { sheetUrl: url };
+            await window.saveState();
         };
 
         window.applyCloudData = () => {
@@ -157,14 +175,19 @@
         
         function initIcons() { if (window.lucide) lucide.createIcons(); }
 
-        async function syncFromSheets() {
+        async function manualSync() {
             const url = document.getElementById('sheetUrl').value;
             if (!url) return;
             
-            const syncIcon = document.getElementById('sync-icon');
-            syncIcon.classList.add('animate-spin');
+            // Guardar en la nube para persistencia total
+            if (window.saveSheetLink) window.saveSheetLink(url);
             
-            localStorage.setItem('saved_sheet_url', url);
+            syncFromSheets(url);
+        }
+
+        async function syncFromSheets(url) {
+            const syncIcon = document.getElementById('sync-icon');
+            if (syncIcon) syncIcon.classList.add('animate-spin');
             
             Papa.parse(url, {
                 download: true,
@@ -172,11 +195,11 @@
                 skipEmptyLines: true,
                 complete: function(results) {
                     processData(results.data);
-                    syncIcon.classList.remove('animate-spin');
+                    if (syncIcon) syncIcon.classList.remove('animate-spin');
                     showToast("Sincronización exitosa");
                 },
                 error: function(err) {
-                    syncIcon.classList.remove('animate-spin');
+                    if (syncIcon) syncIcon.classList.remove('animate-spin');
                     alert("Error al leer el Excel. Verifica que esté publicado como CSV.");
                 }
             });
@@ -185,14 +208,13 @@
         function processData(data) {
             window.patients = data.filter(row => row.Nombre || row.Paciente).map((row, index) => {
                 const nombre = row.Nombre || row.Paciente;
-                // Intentar detectar columnas de sesiones
                 const tFisica = parseInt(row['T. FISICA'] || row['FISICA'] || 0);
                 const tOcupacional = parseInt(row['T. OCUPACIONAL'] || row['OCUPACIONAL'] || 0);
                 const tRespira = parseInt(row['T.RESPIRA'] || row['RESPIRATORIA'] || 0);
                 
                 return {
                     id: index,
-                    uniqueId: btoa(nombre).substring(0, 15), // ID basado en nombre
+                    uniqueId: btoa(nombre).substring(0, 15),
                     nombre: nombre,
                     direccion: row.Direccion || row.Dirección || row.Ciudad || "",
                     horario: "",
@@ -297,16 +319,13 @@
 
         function showToast(m) {
             const t = document.getElementById("toast");
-            t.innerText = m; t.className = "show";
-            setTimeout(() => t.className = "", 3000);
+            if (t) {
+                t.innerText = m; t.className = "show";
+                setTimeout(() => t.className = "", 3000);
+            }
         }
 
         window.onload = () => {
-            const url = localStorage.getItem('saved_sheet_url');
-            if (url) {
-                document.getElementById('sheetUrl').value = url;
-                syncFromSheets();
-            }
             initIcons();
         };
     </script>
