@@ -6,6 +6,41 @@
     <title>Control de Sesiones de Terapia - Cloud Sync</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.0/lucide.min.js"></script>
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-terapias';
+
+        window.db = db;
+        window.appId = appId;
+        window.auth = auth;
+
+        // Autenticación según Regla 3
+        const initAuth = async () => {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
+            }
+        };
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                window.currentUser = user;
+                startRealtimeSync();
+            }
+        });
+
+        initAuth();
+    </script>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
@@ -63,7 +98,7 @@
                 <h1 class="text-3xl font-bold text-slate-800 tracking-tight">Gestión de Terapias</h1>
                 <p class="text-slate-500 font-medium flex items-center gap-2">
                     <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                    Sincronizado con Google Sheets
+                    Sincronizado con Sheets & Cloud
                 </p>
             </div>
             <div class="flex gap-2">
@@ -121,7 +156,7 @@
         </div>
     </div>
 
-    <!-- Modales (Manteniendo tu estructura original) -->
+    <!-- Modales -->
     <div id="confirmAgendaModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
         <div class="bg-white p-6 rounded-3xl max-w-sm w-full shadow-2xl">
             <div class="flex justify-between items-start mb-4">
@@ -181,6 +216,34 @@
             setTimeout(() => { toast.className = ""; }, 3000);
         }
 
+        // REGLA 1 y 2: Sincronización Realtime con Firestore
+        function startRealtimeSync() {
+            if (!window.currentUser) return;
+            const docRef = doc(window.db, 'artifacts', window.appId, 'users', window.currentUser.uid, 'data', 'patients_backup');
+            
+            onSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const cloudData = docSnap.data().list;
+                    if (cloudData && cloudData.length > 0) {
+                        patients = cloudData;
+                        saveDataLocal(); // Actualiza localstorage para offline
+                        renderPatients();
+                        if(currentView === 'calendar') renderCalendar();
+                    }
+                }
+            }, (error) => console.error("Sync Error:", error));
+        }
+
+        async function saveToCloud() {
+            if (!window.currentUser) return;
+            try {
+                const docRef = doc(window.db, 'artifacts', window.appId, 'users', window.currentUser.uid, 'data', 'patients_backup');
+                await setDoc(docRef, { list: patients, lastSync: new Date().toISOString() });
+            } catch (e) {
+                console.error("Cloud Save Error:", e);
+            }
+        }
+
         async function fetchSheetData() {
             const btn = document.getElementById('syncBtn');
             const icon = document.getElementById('syncIcon');
@@ -210,7 +273,7 @@
             for (let i = 1; i < lines.length; i++) {
                 if (!lines[i]) continue;
                 const obj = {};
-                const currentline = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/); // Regex para ignorar comas dentro de comillas
+                const currentline = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
 
                 for (let j = 0; j < headers.length; j++) {
                     obj[headers[j]] = (currentline[j] || "").trim().replace(/"/g, '');
@@ -221,7 +284,6 @@
         }
 
         function processPatients(data) {
-            // Mapeamos los datos manteniendo la lógica de tu código original
             const newPatients = data.map((row, index) => {
                 let grupo = 'otros';
                 const direccion = String(row.Direccion || row.Dirección || row.Ciudad || "").toLowerCase().trim();
@@ -236,7 +298,6 @@
                 const tOcupacional = parseInt(row['T. OCUPACIONAL'] || row['OCUPACIONAL'] || row['T.OCUPACIONAL'] || 0);
                 const tRespira = parseInt(row['T.RESPIRA'] || row['T. RESPIRA'] || row['T. RESPIRATORIA'] || row['RESPIRATORIA'] || 0);
 
-                // Si el paciente ya existe localmente, preservamos su progreso y horario
                 const existing = patients.find(p => p.nombre === (row.Nombre || row.Paciente));
 
                 return {
@@ -257,7 +318,8 @@
             });
 
             patients = newPatients;
-            saveData();
+            saveDataLocal();
+            saveToCloud();
             renderPatients();
             if(currentView === 'calendar') renderCalendar();
         }
@@ -359,7 +421,8 @@
             const idx = patients.findIndex(p => p.id === patientId);
             if (idx !== -1) { 
                 patients[idx].horario = value; 
-                saveData(); 
+                saveDataLocal(); 
+                saveToCloud();
                 if(value.trim() !== '') showToast("Cita programada");
                 if(currentView === 'list') renderPatients(); else renderCalendar(); 
             }
@@ -395,9 +458,14 @@
         function validateSelectedTherapies() {
             const p = patients.find(x => x.id === activePatientId);
             const selected = document.querySelectorAll('input[name="therapy-select"]:checked');
-            if (selected.length === 0) { alert("Selecciona al menos una terapia."); return; }
+            if (selected.length === 0) { showToast("Selecciona al menos una terapia."); return; }
             selected.forEach(cb => { if(p.terapias[cb.value].realizada < p.terapias[cb.value].total) { p.terapias[cb.value].realizada++; p.completadas++; } });
-            p.horario = ''; saveData(); closeModal('confirmAgendaModal'); showToast("Progreso guardado"); renderCalendar();
+            p.horario = ''; 
+            saveDataLocal(); 
+            saveToCloud();
+            closeModal('confirmAgendaModal'); 
+            showToast("Progreso guardado"); 
+            renderCalendar();
         }
 
         function openEditModal(id) {
@@ -412,24 +480,22 @@
             const newTime = document.getElementById('editAppointmentTime').value;
             const idx = patients.findIndex(p => p.id === activePatientId);
             patients[idx].horario = newTime;
-            saveData(); closeModal('editAppointmentModal'); showToast("Cita actualizada"); renderCalendar();
+            saveDataLocal(); saveToCloud(); closeModal('editAppointmentModal'); showToast("Cita actualizada"); renderCalendar();
         }
 
         function confirmCancelAppointment() {
-            if (confirm("¿Cancelar esta cita?")) {
-                const idx = patients.findIndex(p => p.id === activePatientId);
-                patients[idx].horario = '';
-                saveData(); closeModal('editAppointmentModal'); renderCalendar();
-            }
+            const idx = patients.findIndex(p => p.id === activePatientId);
+            patients[idx].horario = '';
+            saveDataLocal(); saveToCloud(); closeModal('editAppointmentModal'); renderCalendar();
         }
 
         function closeModal(id) { document.getElementById(id).classList.replace('flex', 'hidden'); }
-        function saveData() { localStorage.setItem('terapia_patients', JSON.stringify(patients)); }
-        function resetData() { if(confirm("¿Borrar todos los datos locales?")) { patients = []; saveData(); location.reload(); } }
+        function saveDataLocal() { localStorage.setItem('terapia_patients', JSON.stringify(patients)); }
+        function resetData() { if(confirm("¿Borrar todos los datos locales y cloud?")) { patients = []; saveDataLocal(); saveToCloud(); location.reload(); } }
 
         document.addEventListener('DOMContentLoaded', () => { 
             if(patients.length > 0) renderPatients();
-            else fetchSheetData(); // Auto-fetch al cargar si está vacío
+            else fetchSheetData();
             initIcons(); 
         });
     </script>
