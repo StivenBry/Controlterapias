@@ -6,41 +6,6 @@
     <title>Control de Sesiones de Terapia - Cloud Sync</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.0/lucide.min.js"></script>
-    <!-- Firebase SDK -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-terapias';
-
-        window.db = db;
-        window.appId = appId;
-        window.auth = auth;
-
-        // Autenticación según Regla 3
-        const initAuth = async () => {
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await signInWithCustomToken(auth, __initial_auth_token);
-            } else {
-                await signInAnonymously(auth);
-            }
-        };
-
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                window.currentUser = user;
-                startRealtimeSync();
-            }
-        });
-
-        initAuth();
-    </script>
-
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
@@ -98,7 +63,7 @@
                 <h1 class="text-3xl font-bold text-slate-800 tracking-tight">Gestión de Terapias</h1>
                 <p class="text-slate-500 font-medium flex items-center gap-2">
                     <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                    Sincronizado con Sheets & Cloud
+                    Sincronizado con Google Sheets
                 </p>
             </div>
             <div class="flex gap-2">
@@ -156,7 +121,7 @@
         </div>
     </div>
 
-    <!-- Modales -->
+    <!-- Modales (Manteniendo tu estructura original) -->
     <div id="confirmAgendaModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
         <div class="bg-white p-6 rounded-3xl max-w-sm w-full shadow-2xl">
             <div class="flex justify-between items-start mb-4">
@@ -216,34 +181,6 @@
             setTimeout(() => { toast.className = ""; }, 3000);
         }
 
-        // REGLA 1 y 2: Sincronización Realtime con Firestore
-        function startRealtimeSync() {
-            if (!window.currentUser) return;
-            const docRef = doc(window.db, 'artifacts', window.appId, 'users', window.currentUser.uid, 'data', 'patients_backup');
-            
-            onSnapshot(docRef, (docSnap) => {
-                if (docSnap.exists()) {
-                    const cloudData = docSnap.data().list;
-                    if (cloudData && cloudData.length > 0) {
-                        patients = cloudData;
-                        saveDataLocal(); // Actualiza localstorage para offline
-                        renderPatients();
-                        if(currentView === 'calendar') renderCalendar();
-                    }
-                }
-            }, (error) => console.error("Sync Error:", error));
-        }
-
-        async function saveToCloud() {
-            if (!window.currentUser) return;
-            try {
-                const docRef = doc(window.db, 'artifacts', window.appId, 'users', window.currentUser.uid, 'data', 'patients_backup');
-                await setDoc(docRef, { list: patients, lastSync: new Date().toISOString() });
-            } catch (e) {
-                console.error("Cloud Save Error:", e);
-            }
-        }
-
         async function fetchSheetData() {
             const btn = document.getElementById('syncBtn');
             const icon = document.getElementById('syncIcon');
@@ -273,7 +210,7 @@
             for (let i = 1; i < lines.length; i++) {
                 if (!lines[i]) continue;
                 const obj = {};
-                const currentline = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                const currentline = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/); // Regex para ignorar comas dentro de comillas
 
                 for (let j = 0; j < headers.length; j++) {
                     obj[headers[j]] = (currentline[j] || "").trim().replace(/"/g, '');
@@ -284,48 +221,43 @@
         }
 
         function processPatients(data) {
-            // Filtrar filas que no tengan nombre o paciente válido para evitar pacientes vacíos
-            const newPatients = data
-                .filter(row => {
-                    const nombre = row.Nombre || row.Paciente || "";
-                    return nombre.trim().length > 0;
-                })
-                .map((row, index) => {
-                    let grupo = 'otros';
-                    const direccion = String(row.Direccion || row.Dirección || row.Ciudad || "").toLowerCase().trim();
-                    const diaValorOriginal = String(row.Dia || row.Día || "").trim();
-                    const diaBusqueda = diaValorOriginal.toLowerCase();
+            // Mapeamos los datos manteniendo la lógica de tu código original
+            const newPatients = data.map((row, index) => {
+                let grupo = 'otros';
+                const direccion = String(row.Direccion || row.Dirección || row.Ciudad || "").toLowerCase().trim();
+                const diaValorOriginal = String(row.Dia || row.Día || "").trim();
+                const diaBusqueda = diaValorOriginal.toLowerCase();
 
-                    if (direccion.includes('circasia')) grupo = 'circasia';
-                    else if (diaBusqueda.includes('miercoles') || diaBusqueda.includes('miércoles')) grupo = 'lun_mie';
-                    else grupo = 'otros';
+                if (direccion.includes('circasia')) grupo = 'circasia';
+                else if (diaBusqueda.includes('miercoles') || diaBusqueda.includes('miércoles')) grupo = 'lun_mie';
+                else grupo = 'otros';
 
-                    const tFisica = parseInt(row['T. FISICA'] || row['FISICA'] || row['T.FISICA'] || 0);
-                    const tOcupacional = parseInt(row['T. OCUPACIONAL'] || row['OCUPACIONAL'] || row['T.OCUPACIONAL'] || 0);
-                    const tRespira = parseInt(row['T.RESPIRA'] || row['T. RESPIRA'] || row['T. RESPIRATORIA'] || row['RESPIRATORIA'] || 0);
+                const tFisica = parseInt(row['T. FISICA'] || row['FISICA'] || row['T.FISICA'] || 0);
+                const tOcupacional = parseInt(row['T. OCUPACIONAL'] || row['OCUPACIONAL'] || row['T.OCUPACIONAL'] || 0);
+                const tRespira = parseInt(row['T.RESPIRA'] || row['T. RESPIRA'] || row['T. RESPIRATORIA'] || row['RESPIRATORIA'] || 0);
 
-                    const existing = patients.find(p => p.nombre === (row.Nombre || row.Paciente));
+                // Si el paciente ya existe localmente, preservamos su progreso y horario
+                const existing = patients.find(p => p.nombre === (row.Nombre || row.Paciente));
 
-                    return {
-                        id: existing ? existing.id : (Date.now() + index),
-                        nombre: row.Nombre || row.Paciente || 'Sin Nombre',
-                        direccion: row.Direccion || row.Dirección || row.Ciudad || 'Sin Dirección',
-                        dia: diaValorOriginal,
-                        horario: existing ? existing.horario : '',
-                        grupo: grupo,
-                        terapias: {
-                            fisica: { total: tFisica, realizada: existing ? existing.terapias.fisica.realizada : 0 },
-                            ocupacional: { total: tOcupacional, realizada: existing ? existing.terapias.ocupacional.realizada : 0 },
-                            respiratoria: { total: tRespira, realizada: existing ? existing.terapias.respiratoria.realizada : 0 }
-                        },
-                        completadas: existing ? existing.completadas : 0,
-                        totalSesiones: (tFisica + tOcupacional + tRespira) || 0
-                    };
-                });
+                return {
+                    id: existing ? existing.id : (Date.now() + index),
+                    nombre: row.Nombre || row.Paciente || 'Sin Nombre',
+                    direccion: row.Direccion || row.Dirección || row.Ciudad || 'Sin Dirección',
+                    dia: diaValorOriginal,
+                    horario: existing ? existing.horario : '',
+                    grupo: grupo,
+                    terapias: {
+                        fisica: { total: tFisica, realizada: existing ? existing.terapias.fisica.realizada : 0 },
+                        ocupacional: { total: tOcupacional, realizada: existing ? existing.terapias.ocupacional.realizada : 0 },
+                        respiratoria: { total: tRespira, realizada: existing ? existing.terapias.respiratoria.realizada : 0 }
+                    },
+                    completadas: existing ? existing.completadas : 0,
+                    totalSesiones: (tFisica + tOcupacional + tRespira) || 0
+                };
+            });
 
             patients = newPatients;
-            saveDataLocal();
-            saveToCloud();
+            saveData();
             renderPatients();
             if(currentView === 'calendar') renderCalendar();
         }
@@ -427,8 +359,7 @@
             const idx = patients.findIndex(p => p.id === patientId);
             if (idx !== -1) { 
                 patients[idx].horario = value; 
-                saveDataLocal(); 
-                saveToCloud();
+                saveData(); 
                 if(value.trim() !== '') showToast("Cita programada");
                 if(currentView === 'list') renderPatients(); else renderCalendar(); 
             }
@@ -464,14 +395,9 @@
         function validateSelectedTherapies() {
             const p = patients.find(x => x.id === activePatientId);
             const selected = document.querySelectorAll('input[name="therapy-select"]:checked');
-            if (selected.length === 0) { showToast("Selecciona al menos una terapia."); return; }
+            if (selected.length === 0) { alert("Selecciona al menos una terapia."); return; }
             selected.forEach(cb => { if(p.terapias[cb.value].realizada < p.terapias[cb.value].total) { p.terapias[cb.value].realizada++; p.completadas++; } });
-            p.horario = ''; 
-            saveDataLocal(); 
-            saveToCloud();
-            closeModal('confirmAgendaModal'); 
-            showToast("Progreso guardado"); 
-            renderCalendar();
+            p.horario = ''; saveData(); closeModal('confirmAgendaModal'); showToast("Progreso guardado"); renderCalendar();
         }
 
         function openEditModal(id) {
@@ -486,22 +412,24 @@
             const newTime = document.getElementById('editAppointmentTime').value;
             const idx = patients.findIndex(p => p.id === activePatientId);
             patients[idx].horario = newTime;
-            saveDataLocal(); saveToCloud(); closeModal('editAppointmentModal'); showToast("Cita actualizada"); renderCalendar();
+            saveData(); closeModal('editAppointmentModal'); showToast("Cita actualizada"); renderCalendar();
         }
 
         function confirmCancelAppointment() {
-            const idx = patients.findIndex(p => p.id === activePatientId);
-            patients[idx].horario = '';
-            saveDataLocal(); saveToCloud(); closeModal('editAppointmentModal'); renderCalendar();
+            if (confirm("¿Cancelar esta cita?")) {
+                const idx = patients.findIndex(p => p.id === activePatientId);
+                patients[idx].horario = '';
+                saveData(); closeModal('editAppointmentModal'); renderCalendar();
+            }
         }
 
         function closeModal(id) { document.getElementById(id).classList.replace('flex', 'hidden'); }
-        function saveDataLocal() { localStorage.setItem('terapia_patients', JSON.stringify(patients)); }
-        function resetData() { if(confirm("¿Borrar todos los datos locales y cloud?")) { patients = []; saveDataLocal(); saveToCloud(); location.reload(); } }
+        function saveData() { localStorage.setItem('terapia_patients', JSON.stringify(patients)); }
+        function resetData() { if(confirm("¿Borrar todos los datos locales?")) { patients = []; saveData(); location.reload(); } }
 
         document.addEventListener('DOMContentLoaded', () => { 
             if(patients.length > 0) renderPatients();
-            else fetchSheetData();
+            else fetchSheetData(); // Auto-fetch al cargar si está vacío
             initIcons(); 
         });
     </script>
