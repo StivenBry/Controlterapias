@@ -49,8 +49,6 @@
         async function syncToCloud(updatedPatients) {
             if (!currentUser) return;
             try {
-                // CORRECCIÓN: Ruta con número par de segmentos (6 segmentos)
-                // /artifacts/{appId}/public/data/{collectionName}/{docId}
                 const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'appState', 'main');
                 await setDoc(docRef, { 
                     patients: updatedPatients,
@@ -139,6 +137,18 @@
             renderAll();
         };
 
+        window.setFilter = (filter) => {
+            currentFilter = filter;
+            // Update UI for filter buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                const isActive = btn.getAttribute('data-filter') === filter;
+                btn.className = isActive 
+                    ? "filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-blue-600 text-white shadow-md transition" 
+                    : "filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-white text-slate-500 border border-slate-200 hover:border-blue-200 transition";
+            });
+            renderAll();
+        };
+
         window.renderPatients = () => {
             const grid = document.getElementById('patientsGrid');
             const empty = document.getElementById('emptyState');
@@ -187,7 +197,8 @@
         window.renderCalendar = () => {
             const content = document.getElementById('calendarContent');
             const empty = document.getElementById('emptyState');
-            const scheduled = patients.filter(p => p.horario && p.horario.trim() !== '').sort((a, b) => a.horario.localeCompare(b.horario));
+            const filtered = currentFilter === 'all' ? patients : patients.filter(p => p.grupo === currentFilter);
+            const scheduled = filtered.filter(p => p.horario && p.horario.trim() !== '').sort((a, b) => a.horario.localeCompare(b.horario));
             
             if (scheduled.length === 0) { 
                 content.innerHTML = ''; 
@@ -241,7 +252,6 @@
         };
 
         window.focusInput = (id) => {
-            // El selector de vista ya gestiona el foco si fuera necesario
             showToast("Edita la hora en el recuadro blanco");
         };
 
@@ -302,7 +312,6 @@
         onAuthStateChanged(auth, (user) => {
             currentUser = user;
             if (user) {
-                // CORRECCIÓN: Ruta de escucha ajustada a 6 segmentos
                 const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'appState', 'main');
                 onSnapshot(docRef, (snapshot) => {
                     if (snapshot.exists()) {
@@ -311,7 +320,6 @@
                         renderAll();
                         document.getElementById('syncStatus').innerText = "Nube Conectada";
                     } else {
-                        // Migración de LocalStorage
                         const oldData = localStorage.getItem('terapia_patients');
                         if (oldData) {
                             patients = JSON.parse(oldData);
@@ -371,14 +379,23 @@
             </div>
         </div>
 
-        <!-- Selector de Vista -->
-        <div class="flex bg-slate-200/50 p-1.5 rounded-2xl mb-8 w-fit">
-            <button id="btn-view-list" onclick="switchView('list')" class="px-6 py-2 rounded-xl text-sm font-bold transition view-btn-active">
-                Pacientes
-            </button>
-            <button id="btn-view-calendar" onclick="switchView('calendar')" class="px-6 py-2 rounded-xl text-sm font-bold transition view-btn-inactive">
-                Agenda Hoy
-            </button>
+        <!-- Filtros y Vistas -->
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
+            <div class="flex bg-slate-200/50 p-1.5 rounded-2xl w-fit">
+                <button id="btn-view-list" onclick="switchView('list')" class="px-6 py-2 rounded-xl text-sm font-bold transition view-btn-active">
+                    Pacientes
+                </button>
+                <button id="btn-view-calendar" onclick="switchView('calendar')" class="px-6 py-2 rounded-xl text-sm font-bold transition view-btn-inactive">
+                    Agenda Hoy
+                </button>
+            </div>
+
+            <div class="flex gap-2 overflow-x-auto pb-2 md:pb-0">
+                <button onclick="setFilter('all')" data-filter="all" class="filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-blue-600 text-white shadow-md transition">Todos</button>
+                <button onclick="setFilter('lun_mie')" data-filter="lun_mie" class="filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-white text-slate-500 border border-slate-200 hover:border-blue-200 transition">Lun-Mie</button>
+                <button onclick="setFilter('circasia')" data-filter="circasia" class="filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-white text-slate-500 border border-slate-200 hover:border-blue-200 transition">Circasia</button>
+                <button onclick="setFilter('otros')" data-filter="otros" class="filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-white text-slate-500 border border-slate-200 hover:border-blue-200 transition">Otros</button>
+            </div>
         </div>
 
         <!-- Vista Lista -->
@@ -399,7 +416,7 @@
         <!-- Estado Vacío -->
         <div id="emptyState" class="hidden text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-200 mt-6">
             <i data-lucide="folder-open" class="w-12 h-12 text-slate-300 mx-auto mb-4"></i>
-            <p class="text-slate-500 font-medium">No hay pacientes programados.</p>
+            <p class="text-slate-500 font-medium">No hay pacientes en esta categoría.</p>
         </div>
     </div>
 
