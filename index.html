@@ -284,38 +284,44 @@
         }
 
         function processPatients(data) {
-            const newPatients = data.map((row, index) => {
-                let grupo = 'otros';
-                const direccion = String(row.Direccion || row.Dirección || row.Ciudad || "").toLowerCase().trim();
-                const diaValorOriginal = String(row.Dia || row.Día || "").trim();
-                const diaBusqueda = diaValorOriginal.toLowerCase();
+            // Filtrar filas que no tengan nombre o paciente válido para evitar pacientes vacíos
+            const newPatients = data
+                .filter(row => {
+                    const nombre = row.Nombre || row.Paciente || "";
+                    return nombre.trim().length > 0;
+                })
+                .map((row, index) => {
+                    let grupo = 'otros';
+                    const direccion = String(row.Direccion || row.Dirección || row.Ciudad || "").toLowerCase().trim();
+                    const diaValorOriginal = String(row.Dia || row.Día || "").trim();
+                    const diaBusqueda = diaValorOriginal.toLowerCase();
 
-                if (direccion.includes('circasia')) grupo = 'circasia';
-                else if (diaBusqueda.includes('miercoles') || diaBusqueda.includes('miércoles')) grupo = 'lun_mie';
-                else grupo = 'otros';
+                    if (direccion.includes('circasia')) grupo = 'circasia';
+                    else if (diaBusqueda.includes('miercoles') || diaBusqueda.includes('miércoles')) grupo = 'lun_mie';
+                    else grupo = 'otros';
 
-                const tFisica = parseInt(row['T. FISICA'] || row['FISICA'] || row['T.FISICA'] || 0);
-                const tOcupacional = parseInt(row['T. OCUPACIONAL'] || row['OCUPACIONAL'] || row['T.OCUPACIONAL'] || 0);
-                const tRespira = parseInt(row['T.RESPIRA'] || row['T. RESPIRA'] || row['T. RESPIRATORIA'] || row['RESPIRATORIA'] || 0);
+                    const tFisica = parseInt(row['T. FISICA'] || row['FISICA'] || row['T.FISICA'] || 0);
+                    const tOcupacional = parseInt(row['T. OCUPACIONAL'] || row['OCUPACIONAL'] || row['T.OCUPACIONAL'] || 0);
+                    const tRespira = parseInt(row['T.RESPIRA'] || row['T. RESPIRA'] || row['T. RESPIRATORIA'] || row['RESPIRATORIA'] || 0);
 
-                const existing = patients.find(p => p.nombre === (row.Nombre || row.Paciente));
+                    const existing = patients.find(p => p.nombre === (row.Nombre || row.Paciente));
 
-                return {
-                    id: existing ? existing.id : (Date.now() + index),
-                    nombre: row.Nombre || row.Paciente || 'Sin Nombre',
-                    direccion: row.Direccion || row.Dirección || row.Ciudad || 'Sin Dirección',
-                    dia: diaValorOriginal,
-                    horario: existing ? existing.horario : '',
-                    grupo: grupo,
-                    terapias: {
-                        fisica: { total: tFisica, realizada: existing ? existing.terapias.fisica.realizada : 0 },
-                        ocupacional: { total: tOcupacional, realizada: existing ? existing.terapias.ocupacional.realizada : 0 },
-                        respiratoria: { total: tRespira, realizada: existing ? existing.terapias.respiratoria.realizada : 0 }
-                    },
-                    completadas: existing ? existing.completadas : 0,
-                    totalSesiones: (tFisica + tOcupacional + tRespira) || 0
-                };
-            });
+                    return {
+                        id: existing ? existing.id : (Date.now() + index),
+                        nombre: row.Nombre || row.Paciente || 'Sin Nombre',
+                        direccion: row.Direccion || row.Dirección || row.Ciudad || 'Sin Dirección',
+                        dia: diaValorOriginal,
+                        horario: existing ? existing.horario : '',
+                        grupo: grupo,
+                        terapias: {
+                            fisica: { total: tFisica, realizada: existing ? existing.terapias.fisica.realizada : 0 },
+                            ocupacional: { total: tOcupacional, realizada: existing ? existing.terapias.ocupacional.realizada : 0 },
+                            respiratoria: { total: tRespira, realizada: existing ? existing.terapias.respiratoria.realizada : 0 }
+                        },
+                        completadas: existing ? existing.completadas : 0,
+                        totalSesiones: (tFisica + tOcupacional + tRespira) || 0
+                    };
+                });
 
             patients = newPatients;
             saveDataLocal();
