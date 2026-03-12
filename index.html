@@ -3,85 +3,245 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Terapias Cloud</title>
+    <title>Control de Sesiones de Terapia - Cloud Sync</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.0/lucide.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
-    
-    <!-- Firebase SDKs -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, doc, setDoc, onSnapshot, collection, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'terapias-default';
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); transition: all 0.2s; }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); }
+        .tab-active { border-bottom: 2px solid #3b82f6; color: #3b82f6; }
+        .scroll-hide::-webkit-scrollbar { display: none; }
         
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
+        .view-btn-active { background-color: white !important; color: #2563eb !important; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+        .view-btn-inactive { color: #64748b !important; }
 
-        // --- Estado de la aplicación ---
-        // Intentar cargar de localStorage inmediatamente para agilidad
-        let patients = JSON.parse(localStorage.getItem('terapia_cache') || '[]');
+        #toast {
+            visibility: hidden;
+            min-width: 250px;
+            margin-left: -125px;
+            background-color: #334155;
+            color: #fff;
+            text-align: center;
+            border-radius: 12px;
+            padding: 16px;
+            position: fixed;
+            z-index: 100;
+            left: 50%;
+            bottom: 30px;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+        }
+
+        #toast.show {
+            visibility: visible;
+            -webkit-animation: fadein 0.5s, fadeout 0.5s 2.5s;
+            animation: fadein 0.5s, fadeout 0.5s 2.5s;
+        }
+
+        @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
+        @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+
+        .switch-dot { transition: transform 0.2s ease-in-out; transform: translateX(0); }
+        input:checked ~ .switch-dot { transform: translateX(100%); }
+        .switch-bg { transition: background-color 0.2s ease-in-out; }
+        input:checked ~ .switch-bg { background-color: #10b981; }
+
+        .animate-spin-slow { animation: spin 2s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div id="toast">Operación exitosa</div>
+
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-800 tracking-tight">Gestión de Terapias</h1>
+                <p class="text-slate-500 font-medium flex items-center gap-2">
+                    <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                    Sincronizado con Google Sheets
+                </p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="fetchSheetData()" id="syncBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 transition shadow-lg shadow-blue-200">
+                    <i data-lucide="refresh-cw" class="w-5 h-5" id="syncIcon"></i>
+                    <span class="text-sm font-semibold">Sincronizar Cloud</span>
+                </button>
+                <button onclick="resetData()" class="bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 px-4 py-2.5 rounded-xl flex items-center gap-2 transition">
+                    <i data-lucide="trash-2" class="w-5 h-5 text-red-400"></i>
+                    <span class="text-sm font-semibold text-slate-700">Limpiar Locales</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Selector de Vista Principal -->
+        <div class="flex bg-slate-100 p-1.5 rounded-2xl mb-8 w-fit shadow-inner">
+            <button id="btn-view-list" onclick="switchView('list')" class="px-6 py-2 rounded-xl text-sm font-bold transition view-btn-active">
+                <i data-lucide="users" class="w-4 h-4 inline mr-2"></i>Pacientes
+            </button>
+            <button id="btn-view-calendar" onclick="switchView('calendar')" class="px-6 py-2 rounded-xl text-sm font-bold transition view-btn-inactive">
+                <i data-lucide="calendar" class="w-4 h-4 inline mr-2"></i>Agenda Hoy
+            </button>
+        </div>
+
+        <!-- Vista de Lista -->
+        <div id="view-list" class="block">
+            <div class="flex border-b border-slate-200 mb-6 overflow-x-auto scroll-hide">
+                <button onclick="filterByGroup('all')" id="tab-all" class="px-6 py-3 font-semibold transition tab-active whitespace-nowrap">Todos</button>
+                <button onclick="filterByGroup('circasia')" id="tab-circasia" class="px-6 py-3 font-semibold text-slate-500 transition hover:text-blue-600 whitespace-nowrap">Circasia</button>
+                <button onclick="filterByGroup('lun_mie')" id="tab-lun_mie" class="px-6 py-3 font-semibold text-slate-500 transition hover:text-blue-600 whitespace-nowrap">Lun-Mié</button>
+                <button onclick="filterByGroup('otros')" id="tab-otros" class="px-6 py-3 font-semibold text-slate-500 transition hover:text-blue-600 whitespace-nowrap">Otros Días</button>
+            </div>
+            <div id="patientsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </div>
+
+        <!-- Vista de Calendario -->
+        <div id="view-calendar" class="hidden">
+            <div class="bg-white rounded-2xl p-6 border border-slate-200">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                        <i data-lucide="clock" class="text-blue-600"></i> Orden del Día
+                    </h2>
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-widest" id="todayDate"></span>
+                </div>
+                <div id="calendarContent" class="space-y-4"></div>
+            </div>
+        </div>
+
+        <!-- Estado Vacío -->
+        <div id="emptyState" class="hidden text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-200 w-full mt-6">
+            <div class="bg-slate-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i data-lucide="folder-open" class="w-10 h-10 text-slate-300"></i>
+            </div>
+            <p class="text-slate-500 font-medium">No hay datos. Haz clic en "Sincronizar Cloud".</p>
+        </div>
+    </div>
+
+    <!-- Modales (Manteniendo tu estructura original) -->
+    <div id="confirmAgendaModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-white p-6 rounded-3xl max-w-sm w-full shadow-2xl">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h3 class="text-xl font-bold text-slate-800">Confirmar Visita</h3>
+                    <p id="confirmPatientName" class="text-sm text-slate-500"></p>
+                </div>
+                <button onclick="closeModal('confirmAgendaModal')" class="text-slate-400 hover:text-slate-600 transition"><i data-lucide="x" class="w-6 h-6"></i></button>
+            </div>
+            <div id="confirmTherapyList" class="py-4 space-y-3"></div>
+            <div class="space-y-3">
+                <button onclick="validateSelectedTherapies()" class="w-full bg-emerald-600 text-white py-3.5 rounded-2xl font-bold shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition">Confirmar Selección</button>
+                <button onclick="closeModal('confirmAgendaModal')" class="w-full bg-slate-100 text-slate-600 py-3 rounded-2xl font-bold text-sm transition hover:bg-slate-200">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="editAppointmentModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-[60] p-4">
+        <div class="bg-white p-6 rounded-3xl max-w-sm w-full shadow-2xl">
+            <div class="flex justify-between items-start mb-6">
+                <div>
+                    <h3 class="text-xl font-bold text-slate-800">Modificar Cita</h3>
+                    <p id="editModalPatientName" class="text-sm text-slate-500"></p>
+                </div>
+                <button onclick="closeModal('editAppointmentModal')" class="text-slate-400 hover:text-slate-600 transition"><i data-lucide="x" class="w-6 h-6"></i></button>
+            </div>
+            <div class="space-y-6">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Nueva Hora</label>
+                    <input type="time" id="editAppointmentTime" class="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-lg font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500 transition">
+                </div>
+                <div class="space-y-2">
+                    <button onclick="saveAppointmentEdit()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-blue-100 hover:bg-blue-700 transition">Guardar Cambios</button>
+                    <button type="button" onclick="confirmCancelAppointment()" class="w-full bg-red-50 text-red-600 py-4 rounded-2xl font-bold hover:bg-red-100 transition flex items-center justify-center gap-2">
+                        <i data-lucide="calendar-x" class="w-5 h-5"></i> Cancelar Cita
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR3XP2U3MKFx76JAmsKf2h5Q-YODYrgZe1JeuK053Ip1BIYa8RuAJnDBJVjpbNOo_YqYcG1K92cRJ5i/pub?output=csv';
+        
+        let patients = JSON.parse(localStorage.getItem('terapia_patients')) || [];
         let currentFilter = 'all';
         let currentView = 'list';
         let activePatientId = null;
-        let currentUser = null;
 
-        const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQoCf5CWedeuTWLDPk6qJO8P0TrBiItTN2Ei0VVSq_Jy8YtcL6OvgvRFurtfg6JgA/pub?output=csv";
+        function initIcons() { if (typeof lucide !== 'undefined') lucide.createIcons(); }
+        document.getElementById('todayDate').innerText = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
 
-        // --- Funciones de Utilidad ---
-        window.showToast = (m) => {
-            const t = document.getElementById("toast");
-            t.innerText = m;
-            t.className = "show";
-            setTimeout(() => t.className = "", 3000);
-        };
+        function showToast(message) {
+            const toast = document.getElementById("toast");
+            toast.innerText = message;
+            toast.className = "show";
+            setTimeout(() => { toast.className = ""; }, 3000);
+        }
 
-        window.closeModal = (id) => {
-            const el = document.getElementById(id);
-            if (el) el.classList.replace('flex', 'hidden');
-        };
+        async function fetchSheetData() {
+            const btn = document.getElementById('syncBtn');
+            const icon = document.getElementById('syncIcon');
+            btn.disabled = true;
+            icon.classList.add('animate-spin-slow');
 
-        // --- Lógica de Sincronización ---
-        async function syncToCloud(updatedPatients) {
-            // Guardar en caché local primero para respuesta instantánea
-            localStorage.setItem('terapia_cache', JSON.stringify(updatedPatients));
-            
-            if (!currentUser) return;
             try {
-                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'appState', 'main');
-                await setDoc(docRef, { 
-                    patients: updatedPatients,
-                    lastSync: Date.now()
-                }, { merge: true });
-            } catch (e) {
-                console.error("Error al guardar en nube:", e);
+                const response = await fetch(SHEET_URL);
+                const csvText = await response.text();
+                const json = csvToJSON(csvText);
+                processPatients(json);
+                showToast("Sincronización completa");
+            } catch (error) {
+                console.error(error);
+                showToast("Error al sincronizar datos");
+            } finally {
+                btn.disabled = false;
+                icon.classList.remove('animate-spin-slow');
             }
         }
 
-        // --- Procesamiento de Datos ---
-        window.processSheetData = (data) => {
-            const freshData = data.filter(row => row.Nombre || row.Paciente).map((row, index) => {
-                const nombre = row.Nombre || row.Paciente || 'Sin Nombre';
+        function csvToJSON(csv) {
+            const lines = csv.split('\n');
+            const result = [];
+            const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i]) continue;
+                const obj = {};
+                const currentline = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/); // Regex para ignorar comas dentro de comillas
+
+                for (let j = 0; j < headers.length; j++) {
+                    obj[headers[j]] = (currentline[j] || "").trim().replace(/"/g, '');
+                }
+                result.push(obj);
+            }
+            return result;
+        }
+
+        function processPatients(data) {
+            // Mapeamos los datos manteniendo la lógica de tu código original
+            const newPatients = data.map((row, index) => {
+                let grupo = 'otros';
                 const direccion = String(row.Direccion || row.Dirección || row.Ciudad || "").toLowerCase().trim();
                 const diaValorOriginal = String(row.Dia || row.Día || "").trim();
                 const diaBusqueda = diaValorOriginal.toLowerCase();
 
-                let grupo = 'otros';
                 if (direccion.includes('circasia')) grupo = 'circasia';
                 else if (diaBusqueda.includes('miercoles') || diaBusqueda.includes('miércoles')) grupo = 'lun_mie';
+                else grupo = 'otros';
 
-                const tFisica = parseInt(row['T. FISICA'] || row['FISICA'] || 0);
-                const tOcupacional = parseInt(row['T. OCUPACIONAL'] || row['OCUPACIONAL'] || 0);
-                const tRespira = parseInt(row['T.RESPIRA'] || row['RESPIRATORIA'] || 0);
+                const tFisica = parseInt(row['T. FISICA'] || row['FISICA'] || row['T.FISICA'] || 0);
+                const tOcupacional = parseInt(row['T. OCUPACIONAL'] || row['OCUPACIONAL'] || row['T.OCUPACIONAL'] || 0);
+                const tRespira = parseInt(row['T.RESPIRA'] || row['T. RESPIRA'] || row['T. RESPIRATORIA'] || row['RESPIRATORIA'] || 0);
 
-                const existing = patients.find(p => p.nombre === nombre);
+                // Si el paciente ya existe localmente, preservamos su progreso y horario
+                const existing = patients.find(p => p.nombre === (row.Nombre || row.Paciente));
 
                 return {
-                    id: index,
-                    nombre: nombre,
+                    id: existing ? existing.id : (Date.now() + index),
+                    nombre: row.Nombre || row.Paciente || 'Sin Nombre',
                     direccion: row.Direccion || row.Dirección || row.Ciudad || 'Sin Dirección',
                     dia: diaValorOriginal,
                     horario: existing ? existing.horario : '',
@@ -91,121 +251,88 @@
                         ocupacional: { total: tOcupacional, realizada: existing ? existing.terapias.ocupacional.realizada : 0 },
                         respiratoria: { total: tRespira, realizada: existing ? existing.terapias.respiratoria.realizada : 0 }
                     },
-                    completadas: existing ? (existing.terapias.fisica.realizada + existing.terapias.ocupacional.realizada + existing.terapias.respiratoria.realizada) : 0,
+                    completadas: existing ? existing.completadas : 0,
                     totalSesiones: (tFisica + tOcupacional + tRespira) || 0
                 };
             });
 
-            patients = freshData;
-            syncToCloud(patients);
-            renderAll();
-        };
-
-        window.fetchSheetData = () => {
-            const syncIcon = document.getElementById('syncIcon');
-            const syncStatus = document.getElementById('syncStatus');
-            syncIcon?.classList.add('animate-spin');
-            syncStatus.innerText = "Sincronizando Excel...";
-
-            Papa.parse(SHEET_URL, {
-                download: true,
-                header: true,
-                skipEmptyLines: true,
-                complete: function(results) {
-                    processSheetData(results.data);
-                    syncIcon?.classList.remove('animate-spin');
-                    syncStatus.innerText = "Excel Sincronizado";
-                    showToast("Datos de Excel actualizados");
-                },
-                error: () => {
-                    syncIcon?.classList.remove('animate-spin');
-                    syncStatus.innerText = "Error Excel";
-                }
-            });
-        };
-
-        // --- Renderizado ---
-        function renderAll() {
-            if (currentView === 'list') renderPatients(); else renderCalendar();
-            if (typeof lucide !== 'undefined') lucide.createIcons();
+            patients = newPatients;
+            saveData();
+            renderPatients();
+            if(currentView === 'calendar') renderCalendar();
         }
 
-        window.switchView = (view) => {
-            currentView = view;
-            document.getElementById('view-list').classList.toggle('hidden', view !== 'list');
-            document.getElementById('view-calendar').classList.toggle('hidden', view !== 'calendar');
-            document.getElementById('btn-view-list').className = (view === 'list') ? "px-6 py-2 rounded-xl text-sm font-bold transition view-btn-active shadow-sm" : "px-6 py-2 rounded-xl text-sm font-bold transition view-btn-inactive";
-            document.getElementById('btn-view-calendar').className = (view === 'calendar') ? "px-6 py-2 rounded-xl text-sm font-bold transition view-btn-active shadow-sm" : "px-6 py-2 rounded-xl text-sm font-bold transition view-btn-inactive";
-            renderAll();
-        };
-
-        window.setFilter = (filter) => {
-            currentFilter = filter;
-            document.querySelectorAll('.filter-btn').forEach(btn => {
-                const isActive = btn.getAttribute('data-filter') === filter;
-                btn.className = isActive 
-                    ? "filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-blue-600 text-white shadow-md transition" 
-                    : "filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-white text-slate-500 border border-slate-200 hover:border-blue-200 transition";
+        function filterByGroup(groupId) {
+            currentFilter = groupId;
+            const tabs = ['all', 'circasia', 'lun_mie', 'otros'];
+            tabs.forEach(id => {
+                const el = document.getElementById('tab-' + id);
+                if (el) el.className = (id === groupId) ? "px-6 py-3 font-semibold transition tab-active whitespace-nowrap" : "px-6 py-3 font-semibold text-slate-500 transition hover:text-blue-600 whitespace-nowrap";
             });
-            renderAll();
-        };
+            renderPatients();
+        }
 
-        window.renderPatients = () => {
+        function renderPatients() {
             const grid = document.getElementById('patientsGrid');
             const empty = document.getElementById('emptyState');
             const filtered = currentFilter === 'all' ? patients : patients.filter(p => p.grupo === currentFilter);
             
-            if (filtered.length === 0) { grid.innerHTML = ''; empty.classList.remove('hidden'); return; }
+            if (filtered.length === 0 && currentView === 'list') { grid.innerHTML = ''; empty.classList.remove('hidden'); return; }
             empty.classList.add('hidden');
             
             grid.innerHTML = filtered.map(p => {
                 const perc = p.totalSesiones > 0 ? Math.round((p.completadas / p.totalSesiones) * 100) : 0;
-                let tStats = '';
-                if (p.terapias.fisica.total > 0) tStats += `<div class="therapy-badge text-blue-600 bg-blue-50 border-blue-100">F ${p.terapias.fisica.realizada}/${p.terapias.fisica.total}</div>`;
-                if (p.terapias.ocupacional.total > 0) tStats += `<div class="therapy-badge text-purple-600 bg-purple-50 border-purple-100">O ${p.terapias.ocupacional.realizada}/${p.terapias.ocupacional.total}</div>`;
-                if (p.terapias.respiratoria.total > 0) tStats += `<div class="therapy-badge text-emerald-600 bg-emerald-50 border-emerald-100">R ${p.terapias.respiratoria.realizada}/${p.terapias.respiratoria.total}</div>`;
+                let therapyStats = '';
+                if (p.terapias.fisica.total > 0) therapyStats += `<div class="flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100 text-[10px] font-bold">F ${p.terapias.fisica.realizada}/${p.terapias.fisica.total}</div>`;
+                if (p.terapias.ocupacional.total > 0) therapyStats += `<div class="flex items-center gap-1 text-purple-600 bg-purple-50 px-2 py-0.5 rounded-lg border border-purple-100 text-[10px] font-bold">O ${p.terapias.ocupacional.realizada}/${p.terapias.ocupacional.total}</div>`;
+                if (p.terapias.respiratoria.total > 0) therapyStats += `<div class="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100 text-[10px] font-bold">R ${p.terapias.respiratoria.realizada}/${p.terapias.respiratoria.total}</div>`;
 
                 return `
-                    <div class="card p-5 border border-slate-100 flex flex-col h-full bg-white rounded-2xl shadow-sm">
+                    <div class="card p-5 border border-slate-100 flex flex-col h-full">
                         <div class="flex-grow">
                             <div class="flex justify-between items-start mb-1">
                                 <span class="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase border bg-slate-100 text-slate-600">${p.grupo}</span>
-                                <div class="flex gap-1">${tStats}</div>
+                                <div class="flex gap-1">${therapyStats}</div>
                             </div>
                             <h3 class="font-bold text-slate-800 text-lg mt-1 truncate">${p.nombre}</h3>
                             <p class="text-[11px] text-slate-400 mb-3 flex items-center gap-1"><i data-lucide="map-pin" class="w-3 h-3"></i><span class="truncate">${p.direccion}</span></p>
-                            
                             <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 mb-4">
-                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Hora Cita</label>
+                                <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Hora Programada</label>
                                 <div class="flex items-center gap-2">
                                     <i data-lucide="clock" class="w-4 h-4 text-slate-400"></i>
-                                    <input type="text" placeholder="--:--" value="${p.horario || ''}" 
-                                        onchange="window.updateSchedule(${p.id}, this.value)" 
-                                        class="bg-transparent text-sm font-bold text-slate-700 outline-none w-full">
+                                    <input type="text" id="input-schedule-${p.id}" placeholder="--:--" value="${p.horario || ''}" onchange="updateSchedule(${p.id}, this.value)" class="bg-transparent text-sm font-bold text-slate-700 outline-none w-full">
                                 </div>
                             </div>
                         </div>
                         <div class="mt-auto">
                             <div class="flex justify-between text-[11px] mb-1 font-bold"><span class="text-slate-500 uppercase">Progreso</span><span class="text-blue-600">${p.completadas}/${p.totalSesiones}</span></div>
-                            <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden mb-4"><div class="bg-blue-500 h-full transition-all duration-500" style="width:${perc}%"></div></div>
-                            <button onclick="window.focusInput(${p.id})" class="w-full bg-slate-800 text-white py-2.5 rounded-xl text-xs font-bold hover:bg-slate-900 transition flex items-center justify-center gap-2">Asignar Cita</button>
+                            <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden mb-4"><div class="bg-blue-500 h-full transition-all" style="width:${perc}%"></div></div>
+                            <button onclick="focusScheduleInput(${p.id})" class="w-full bg-slate-800 text-white py-2.5 rounded-xl text-xs font-bold hover:bg-slate-900 transition flex items-center justify-center gap-2">Asignar Cita</button>
                         </div>
-                    </div>`;
+                    </div>
+                `;
             }).join('');
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-        };
+            initIcons();
+        }
 
-        window.renderCalendar = () => {
+        function focusScheduleInput(id) { document.getElementById(`input-schedule-${id}`).focus(); }
+
+        function switchView(view) {
+            currentView = view;
+            document.getElementById('view-list').classList.toggle('hidden', view !== 'list');
+            document.getElementById('view-calendar').classList.toggle('hidden', view !== 'calendar');
+            document.getElementById('btn-view-list').className = (view === 'list') ? "px-6 py-2 rounded-xl text-sm font-bold transition view-btn-active" : "px-6 py-2 rounded-xl text-sm font-bold transition view-btn-inactive";
+            document.getElementById('btn-view-calendar').className = (view === 'calendar') ? "px-6 py-2 rounded-xl text-sm font-bold transition view-btn-active" : "px-6 py-2 rounded-xl text-sm font-bold transition view-btn-inactive";
+            if (view === 'list') renderPatients(); else renderCalendar();
+            initIcons();
+        }
+
+        function renderCalendar() {
             const content = document.getElementById('calendarContent');
             const empty = document.getElementById('emptyState');
-            const filtered = currentFilter === 'all' ? patients : patients.filter(p => p.grupo === currentFilter);
-            const scheduled = filtered.filter(p => p.horario && p.horario.trim() !== '').sort((a, b) => a.horario.localeCompare(b.horario));
+            const scheduled = patients.filter(p => p.horario && p.horario.trim() !== '').sort((a, b) => a.horario.localeCompare(b.horario));
             
-            if (scheduled.length === 0) { 
-                content.innerHTML = ''; 
-                if(currentView === 'calendar') empty.classList.remove('hidden'); 
-                return; 
-            }
+            if (scheduled.length === 0) { content.innerHTML = ''; if(currentView === 'calendar') empty.classList.remove('hidden'); return; }
             empty.classList.add('hidden');
             
             content.innerHTML = scheduled.map(p => `
@@ -218,222 +345,93 @@
                                 <p class="text-[11px] text-slate-500 truncate">${p.direccion}</p>
                             </div>
                             <div class="flex gap-2">
-                                <button onclick="window.openConfirmModal(${p.id})" class="bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-100 transition flex items-center gap-1">
-                                    <i data-lucide="check-circle-2" class="w-3 h-3"></i> Realizada
-                                </button>
-                                <button onclick="window.clearSchedule(${p.id})" class="bg-white border border-slate-200 text-slate-400 px-3 py-1.5 rounded-lg text-xs font-bold hover:text-red-500 transition">
-                                    <i data-lucide="trash-2" class="w-3 h-3"></i>
-                                </button>
+                                <button onclick="openConfirmAgendaModal(${p.id})" class="bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-100 transition flex items-center gap-1"><i data-lucide="check-circle-2" class="w-3 h-3"></i> Realizada</button>
+                                <button onclick="openEditModal(${p.id})" class="bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-slate-50 transition flex items-center gap-1"><i data-lucide="edit-3" class="w-3 h-3"></i> Modificar</button>
                             </div>
                         </div>
                     </div>
-                </div>`).join('');
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-        };
+                </div>
+            `).join('');
+            initIcons();
+        }
 
-        // --- Acciones del Usuario ---
-        window.updateSchedule = (id, value) => {
-            const idx = patients.findIndex(p => p.id === id);
-            if (idx !== -1) {
-                patients[idx].horario = value;
-                syncToCloud(patients);
+        function updateSchedule(patientId, value) {
+            const idx = patients.findIndex(p => p.id === patientId);
+            if (idx !== -1) { 
+                patients[idx].horario = value; 
+                saveData(); 
                 if(value.trim() !== '') showToast("Cita programada");
-                renderAll();
+                if(currentView === 'list') renderPatients(); else renderCalendar(); 
             }
-        };
+        }
 
-        window.clearSchedule = (id) => {
-            const idx = patients.findIndex(p => p.id === id);
-            if (idx !== -1) {
-                patients[idx].horario = '';
-                syncToCloud(patients);
-                showToast("Cita removida");
-                renderAll();
-            }
-        };
-
-        window.focusInput = (id) => {
-            showToast("Edita la hora en el recuadro blanco");
-        };
-
-        window.openConfirmModal = (id) => {
+        function openConfirmAgendaModal(id) {
             activePatientId = id;
             const p = patients.find(x => x.id === id);
-            if (!p) return;
+            if(!p) return;
             document.getElementById('confirmPatientName').innerText = p.nombre;
             const listDiv = document.getElementById('confirmTherapyList');
             listDiv.innerHTML = '';
             ['fisica', 'ocupacional', 'respiratoria'].forEach(type => {
                 const t = p.terapias[type];
                 if(t.total > 0 && t.realizada < t.total) {
-                    const label = type === 'fisica' ? 'Física' : type === 'ocupacional' ? 'Ocupacional' : 'Respiratoria';
+                    const label = type.charAt(0).toUpperCase() + type.slice(1);
                     const item = document.createElement('label');
-                    item.className = "flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-2xl cursor-pointer hover:bg-white transition mb-2";
+                    item.className = "flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-2xl cursor-pointer hover:bg-white transition";
                     item.innerHTML = `
-                        <div class="flex flex-col">
-                            <span class="text-sm font-bold text-slate-700">${label}</span>
-                            <span class="text-[10px] text-slate-400">${t.realizada}/${t.total} sesiones</span>
+                        <div class="flex flex-col"><span class="text-sm font-bold text-slate-700">${label}</span><span class="text-[10px] text-slate-400">${t.realizada}/${t.total} sesiones</span></div>
+                        <div class="relative inline-block w-10 h-6 align-middle select-none transition duration-200 ease-in">
+                            <input type="checkbox" name="therapy-select" value="${type}" id="toggle-${type}" checked class="absolute block w-5 h-5 mt-0.5 ml-0.5 rounded-full bg-white border border-slate-200 appearance-none cursor-pointer focus:outline-none switch-dot z-10 shadow-sm"/>
+                            <label for="toggle-${type}" class="block overflow-hidden h-6 rounded-full bg-slate-200 cursor-pointer switch-bg"></label>
                         </div>
-                        <input type="checkbox" name="therapy-select" value="${type}" checked class="w-5 h-5 accent-emerald-600">`;
+                    `;
                     listDiv.appendChild(item);
                 }
             });
             document.getElementById('confirmAgendaModal').classList.replace('hidden', 'flex');
-        };
-
-        window.validateTherapies = async () => {
-            const p = patients.find(x => x.id === activePatientId);
-            if (!p) return;
-            const selected = document.querySelectorAll('input[name="therapy-select"]:checked');
-            if (selected.length === 0) return;
-            
-            selected.forEach(cb => {
-                const type = cb.value;
-                if(p.terapias[type].realizada < p.terapias[type].total) {
-                    p.terapias[type].realizada++;
-                }
-            });
-            p.completadas = (p.terapias.fisica.realizada + p.terapias.ocupacional.realizada + p.terapias.respiratoria.realizada);
-            p.horario = ''; 
-            await syncToCloud(patients);
-            closeModal('confirmAgendaModal');
-            showToast("Sesión registrada exitosamente");
-            renderAll();
-        };
-
-        // --- Inicialización y Auth Optimizado ---
-        const initAuth = async () => {
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await signInWithCustomToken(auth, __initial_auth_token);
-            } else {
-                await signInAnonymously(auth);
-            }
-        };
-
-        // Renderizar inicial desde caché para agilidad instantánea
-        renderAll();
-
-        onAuthStateChanged(auth, (user) => {
-            currentUser = user;
-            if (user) {
-                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'appState', 'main');
-                // Escuchar cambios pero no bloquear la interfaz
-                onSnapshot(docRef, (snapshot) => {
-                    if (snapshot.exists()) {
-                        const cloudData = snapshot.data();
-                        // Solo actualizar si hay cambios reales para evitar parpadeos
-                        if (JSON.stringify(cloudData.patients) !== JSON.stringify(patients)) {
-                            patients = cloudData.patients || [];
-                            localStorage.setItem('terapia_cache', JSON.stringify(patients));
-                            renderAll();
-                        }
-                        document.getElementById('syncStatus').innerText = "Nube Conectada";
-                    } else if (patients.length === 0) {
-                        // Si no hay nada ni en nube ni en caché, traer de Excel
-                        fetchSheetData();
-                    }
-                }, (error) => {
-                    console.error("Error en Snapshot:", error);
-                    document.getElementById('syncStatus').innerText = "Modo Local";
-                });
-            } else {
-                initAuth();
-            }
-        });
-
-    </script>
-
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; -webkit-tap-highlight-color: transparent; }
-        .view-btn-active { background-color: white !important; color: #2563eb !important; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
-        .view-btn-inactive { color: #64748b !important; }
-        .therapy-badge { display: flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 8px; border: 1px solid; font-size: 10px; font-weight: 800; }
-        #toast {
-            visibility: hidden; min-width: 250px; margin-left: -125px; background-color: #1e293b;
-            color: #fff; text-align: center; border-radius: 16px; padding: 16px;
-            position: fixed; z-index: 100; left: 50%; bottom: 30px; font-size: 14px;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); transition: 0.3s;
+            initIcons();
         }
-        #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
-        @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
-        @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
-    </style>
-</head>
-<body class="p-4 md:p-8">
-    <div id="toast">Cita asignada</div>
 
-    <div class="max-w-6xl mx-auto">
-        <!-- Header -->
-        <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-            <div>
-                <h1 class="text-3xl font-bold text-slate-800 tracking-tight">Gestión Terapéutica</h1>
-                <div class="flex items-center gap-2">
-                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <p class="text-slate-500 font-medium text-sm" id="syncStatus">Listo</p>
-                </div>
-            </div>
-            <div class="flex gap-2">
-                <button onclick="fetchSheetData()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 transition shadow-lg shadow-blue-200">
-                    <i data-lucide="refresh-cw" class="w-5 h-5" id="syncIcon"></i>
-                    <span class="text-sm font-bold">Refrescar Excel</span>
-                </button>
-            </div>
-        </div>
+        function validateSelectedTherapies() {
+            const p = patients.find(x => x.id === activePatientId);
+            const selected = document.querySelectorAll('input[name="therapy-select"]:checked');
+            if (selected.length === 0) { alert("Selecciona al menos una terapia."); return; }
+            selected.forEach(cb => { if(p.terapias[cb.value].realizada < p.terapias[cb.value].total) { p.terapias[cb.value].realizada++; p.completadas++; } });
+            p.horario = ''; saveData(); closeModal('confirmAgendaModal'); showToast("Progreso guardado"); renderCalendar();
+        }
 
-        <!-- Filtros y Vistas -->
-        <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
-            <div class="flex bg-slate-200/50 p-1.5 rounded-2xl w-fit">
-                <button id="btn-view-list" onclick="switchView('list')" class="px-6 py-2 rounded-xl text-sm font-bold transition view-btn-active">
-                    Pacientes
-                </button>
-                <button id="btn-view-calendar" onclick="switchView('calendar')" class="px-6 py-2 rounded-xl text-sm font-bold transition view-btn-inactive">
-                    Agenda Hoy
-                </button>
-            </div>
+        function openEditModal(id) {
+            activePatientId = id;
+            const p = patients.find(x => x.id === id);
+            document.getElementById('editModalPatientName').innerText = p.nombre;
+            document.getElementById('editAppointmentTime').value = p.horario || "";
+            document.getElementById('editAppointmentModal').classList.replace('hidden', 'flex');
+        }
 
-            <div class="flex gap-2 overflow-x-auto pb-2 md:pb-0 no-scrollbar">
-                <button onclick="setFilter('all')" data-filter="all" class="filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-blue-600 text-white shadow-md transition whitespace-nowrap">Todos</button>
-                <button onclick="setFilter('lun_mie')" data-filter="lun_mie" class="filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-white text-slate-500 border border-slate-200 hover:border-blue-200 transition whitespace-nowrap">Lun-Mie</button>
-                <button onclick="setFilter('circasia')" data-filter="circasia" class="filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-white text-slate-500 border border-slate-200 hover:border-blue-200 transition whitespace-nowrap">Circasia</button>
-                <button onclick="setFilter('otros')" data-filter="otros" class="filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-white text-slate-500 border border-slate-200 hover:border-blue-200 transition whitespace-nowrap">Otros</button>
-            </div>
-        </div>
+        function saveAppointmentEdit() {
+            const newTime = document.getElementById('editAppointmentTime').value;
+            const idx = patients.findIndex(p => p.id === activePatientId);
+            patients[idx].horario = newTime;
+            saveData(); closeModal('editAppointmentModal'); showToast("Cita actualizada"); renderCalendar();
+        }
 
-        <!-- Vista Lista -->
-        <div id="view-list">
-            <div id="patientsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
-        </div>
+        function confirmCancelAppointment() {
+            if (confirm("¿Cancelar esta cita?")) {
+                const idx = patients.findIndex(p => p.id === activePatientId);
+                patients[idx].horario = '';
+                saveData(); closeModal('editAppointmentModal'); renderCalendar();
+            }
+        }
 
-        <!-- Vista Agenda -->
-        <div id="view-calendar" class="hidden">
-            <div class="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
-                <h2 class="text-xl font-bold text-slate-800 mb-8 flex items-center gap-3">
-                    <i data-lucide="calendar" class="text-blue-600"></i> Orden del Día
-                </h2>
-                <div id="calendarContent" class="space-y-6"></div>
-            </div>
-        </div>
+        function closeModal(id) { document.getElementById(id).classList.replace('flex', 'hidden'); }
+        function saveData() { localStorage.setItem('terapia_patients', JSON.stringify(patients)); }
+        function resetData() { if(confirm("¿Borrar todos los datos locales?")) { patients = []; saveData(); location.reload(); } }
 
-        <!-- Estado Vacío -->
-        <div id="emptyState" class="hidden text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-200 mt-6">
-            <i data-lucide="folder-open" class="w-12 h-12 text-slate-300 mx-auto mb-4"></i>
-            <p class="text-slate-500 font-medium">No hay pacientes en esta categoría.</p>
-        </div>
-    </div>
-
-    <!-- Modales -->
-    <div id="confirmAgendaModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-        <div class="bg-white p-8 rounded-3xl max-w-sm w-full shadow-2xl">
-            <h3 class="text-xl font-bold text-slate-800 mb-1">Confirmar Visita</h3>
-            <p id="confirmPatientName" class="text-sm text-slate-500 mb-6"></p>
-            <div id="confirmTherapyList" class="mb-8"></div>
-            <div class="space-y-3">
-                <button onclick="validateTherapies()" class="w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition">Registrar Sesiones</button>
-                <button onclick="closeModal('confirmAgendaModal')" class="w-full bg-slate-100 text-slate-600 py-3 rounded-2xl font-bold text-sm">Cancelar</button>
-            </div>
-        </div>
-    </div>
-
+        document.addEventListener('DOMContentLoaded', () => { 
+            if(patients.length > 0) renderPatients();
+            else fetchSheetData(); // Auto-fetch al cargar si está vacío
+            initIcons(); 
+        });
+    </script>
 </body>
 </html>
