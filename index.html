@@ -51,9 +51,6 @@
 
         .animate-spin-slow { animation: spin 2s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        
-        /* Modal Backdrop */
-        .modal-active { display: flex !important; }
     </style>
 </head>
 <body class="p-4 md:p-8">
@@ -65,8 +62,8 @@
             <div>
                 <h1 class="text-3xl font-bold text-slate-800 tracking-tight">Gestión de Terapias</h1>
                 <p class="text-slate-500 font-medium flex items-center gap-2">
-                    <span id="syncIndicator" class="w-2 h-2 bg-slate-300 rounded-full"></span>
-                    <span id="syncStatusText">Conectando...</span>
+                    <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                    Sincronizado con Google Sheets
                 </p>
             </div>
             <div class="flex gap-2">
@@ -124,7 +121,7 @@
         </div>
     </div>
 
-    <!-- Modal Confirmar Terapia -->
+    <!-- Modales (Manteniendo tu estructura original) -->
     <div id="confirmAgendaModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
         <div class="bg-white p-6 rounded-3xl max-w-sm w-full shadow-2xl">
             <div class="flex justify-between items-start mb-4">
@@ -142,7 +139,6 @@
         </div>
     </div>
 
-    <!-- Modal Editar Cita -->
     <div id="editAppointmentModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-[60] p-4">
         <div class="bg-white p-6 rounded-3xl max-w-sm w-full shadow-2xl">
             <div class="flex justify-between items-start mb-6">
@@ -167,88 +163,25 @@
         </div>
     </div>
 
-    <!-- Firebase SDK -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, updateDoc, onSnapshot, collection, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Configuración de Firebase
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
-        // URL del Google Sheet
+    <script>
         const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR3XP2U3MKFx76JAmsKf2h5Q-YODYrgZe1JeuK053Ip1BIYa8RuAJnDBJVjpbNOo_YqYcG1K92cRJ5i/pub?output=csv';
         
-        // Estado de la aplicación
-        let patients = [];
+        let patients = JSON.parse(localStorage.getItem('terapia_patients')) || [];
         let currentFilter = 'all';
         let currentView = 'list';
         let activePatientId = null;
-        let currentUser = null;
 
-        // --- Funciones de Utilidad ---
-        window.showToast = function(message) {
+        function initIcons() { if (typeof lucide !== 'undefined') lucide.createIcons(); }
+        document.getElementById('todayDate').innerText = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+
+        function showToast(message) {
             const toast = document.getElementById("toast");
             toast.innerText = message;
             toast.className = "show";
             setTimeout(() => { toast.className = ""; }, 3000);
-        };
-
-        function initIcons() { 
-            if (typeof lucide !== 'undefined') {
-                lucide.createIcons(); 
-            }
         }
 
-        document.getElementById('todayDate').innerText = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
-
-        // --- Autenticación y Carga de Datos Cloud ---
-        const initAuth = async () => {
-            try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            } catch (error) {
-                console.error("Auth error:", error);
-                showToast("Error de conexión");
-            }
-        };
-
-        onAuthStateChanged(auth, (user) => {
-            currentUser = user;
-            if (user) {
-                const indicator = document.getElementById('syncIndicator');
-                indicator.classList.remove('bg-slate-300');
-                indicator.classList.add('bg-emerald-500', 'animate-pulse');
-                document.getElementById('syncStatusText').innerText = "Sincronizado en tiempo real";
-                
-                // Suscribirse a cambios en Firestore (Colección Pública para multi-dispositivo)
-                const q = collection(db, 'artifacts', appId, 'public', 'data', 'patients');
-                onSnapshot(q, (snapshot) => {
-                    patients = snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() }));
-                    renderAll();
-                }, (error) => {
-                    console.error("Firestore error:", error);
-                    showToast("Error al leer datos de la nube");
-                });
-            }
-        });
-
-        initAuth();
-
-        // --- Lógica de Negocio ---
-        window.fetchSheetData = async function() {
-            if (!currentUser) {
-                showToast("Espera a que se establezca la conexión...");
-                return;
-            }
-
+        async function fetchSheetData() {
             const btn = document.getElementById('syncBtn');
             const icon = document.getElementById('syncIcon');
             btn.disabled = true;
@@ -256,64 +189,59 @@
 
             try {
                 const response = await fetch(SHEET_URL);
-                if (!response.ok) throw new Error("Error de red");
                 const csvText = await response.text();
                 const json = csvToJSON(csvText);
-                await processPatients(json);
+                processPatients(json);
                 showToast("Sincronización completa");
             } catch (error) {
                 console.error(error);
-                showToast("Error al conectar con la nube");
+                showToast("Error al sincronizar datos");
             } finally {
                 btn.disabled = false;
                 icon.classList.remove('animate-spin-slow');
             }
-        };
+        }
 
         function csvToJSON(csv) {
-            const lines = csv.split(/\r?\n/);
+            const lines = csv.split('\n');
             const result = [];
-            if (lines.length === 0) return result;
             const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
 
             for (let i = 1; i < lines.length; i++) {
                 if (!lines[i]) continue;
                 const obj = {};
-                const currentline = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                const currentline = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/); // Regex para ignorar comas dentro de comillas
 
                 for (let j = 0; j < headers.length; j++) {
-                    let val = (currentline[j] || "").trim();
-                    if (val.startsWith('"') && val.endsWith('"')) {
-                        val = val.substring(1, val.length - 1);
-                    }
-                    obj[headers[j]] = val;
+                    obj[headers[j]] = (currentline[j] || "").trim().replace(/"/g, '');
                 }
                 result.push(obj);
             }
             return result;
         }
 
-        async function processPatients(data) {
-            for (const row of data) {
+        function processPatients(data) {
+            // Mapeamos los datos manteniendo la lógica de tu código original
+            const newPatients = data.map((row, index) => {
                 let grupo = 'otros';
                 const direccion = String(row.Direccion || row.Dirección || row.Ciudad || "").toLowerCase().trim();
                 const diaValorOriginal = String(row.Dia || row.Día || "").trim();
                 const diaBusqueda = diaValorOriginal.toLowerCase();
 
                 if (direccion.includes('circasia')) grupo = 'circasia';
-                else if (diaBusqueda.includes('miercoles') || diaBusqueda.includes('miércoles') || diaBusqueda.includes('lunes')) grupo = 'lun_mie';
+                else if (diaBusqueda.includes('miercoles') || diaBusqueda.includes('miércoles')) grupo = 'lun_mie';
                 else grupo = 'otros';
 
                 const tFisica = parseInt(row['T. FISICA'] || row['FISICA'] || row['T.FISICA'] || 0);
                 const tOcupacional = parseInt(row['T. OCUPACIONAL'] || row['OCUPACIONAL'] || row['T.OCUPACIONAL'] || 0);
                 const tRespira = parseInt(row['T.RESPIRA'] || row['T. RESPIRA'] || row['T. RESPIRATORIA'] || row['RESPIRATORIA'] || 0);
 
-                const nombreKey = row.Nombre || row.Paciente || 'Desconocido';
-                const existing = patients.find(p => p.nombre === nombreKey);
+                // Si el paciente ya existe localmente, preservamos su progreso y horario
+                const existing = patients.find(p => p.nombre === (row.Nombre || row.Paciente));
 
-                const patientData = {
-                    id: existing ? existing.id : Date.now() + Math.random(),
-                    nombre: nombreKey,
+                return {
+                    id: existing ? existing.id : (Date.now() + index),
+                    nombre: row.Nombre || row.Paciente || 'Sin Nombre',
                     direccion: row.Direccion || row.Dirección || row.Ciudad || 'Sin Dirección',
                     dia: diaValorOriginal,
                     horario: existing ? existing.horario : '',
@@ -326,41 +254,32 @@
                     completadas: existing ? existing.completadas : 0,
                     totalSesiones: (tFisica + tOcupacional + tRespira) || 0
                 };
+            });
 
-                // Guardar en Firestore usando el nombre como ID de documento para evitar duplicados
-                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'patients', btoa(nombreKey).replace(/=/g, ''));
-                await setDoc(docRef, patientData, { merge: true });
-            }
+            patients = newPatients;
+            saveData();
+            renderPatients();
+            if(currentView === 'calendar') renderCalendar();
         }
 
-        window.filterByGroup = function(groupId) {
+        function filterByGroup(groupId) {
             currentFilter = groupId;
             const tabs = ['all', 'circasia', 'lun_mie', 'otros'];
             tabs.forEach(id => {
                 const el = document.getElementById('tab-' + id);
-                if (el) {
-                    if (id === groupId) {
-                        el.className = "px-6 py-3 font-semibold transition tab-active whitespace-nowrap";
-                    } else {
-                        el.className = "px-6 py-3 font-semibold text-slate-500 transition hover:text-blue-600 whitespace-nowrap";
-                    }
-                }
+                if (el) el.className = (id === groupId) ? "px-6 py-3 font-semibold transition tab-active whitespace-nowrap" : "px-6 py-3 font-semibold text-slate-500 transition hover:text-blue-600 whitespace-nowrap";
             });
             renderPatients();
-        };
+        }
 
         function renderPatients() {
             const grid = document.getElementById('patientsGrid');
             const empty = document.getElementById('emptyState');
             const filtered = currentFilter === 'all' ? patients : patients.filter(p => p.grupo === currentFilter);
             
-            if (filtered.length === 0) {
-                grid.innerHTML = '';
-                empty.classList.remove('hidden');
-                return;
-            }
-            
+            if (filtered.length === 0 && currentView === 'list') { grid.innerHTML = ''; empty.classList.remove('hidden'); return; }
             empty.classList.add('hidden');
+            
             grid.innerHTML = filtered.map(p => {
                 const perc = p.totalSesiones > 0 ? Math.round((p.completadas / p.totalSesiones) * 100) : 0;
                 let therapyStats = '';
@@ -376,26 +295,19 @@
                                 <div class="flex gap-1">${therapyStats}</div>
                             </div>
                             <h3 class="font-bold text-slate-800 text-lg mt-1 truncate">${p.nombre}</h3>
-                            <p class="text-[11px] text-slate-400 mb-3 flex items-center gap-1">
-                                <i data-lucide="map-pin" class="w-3 h-3"></i><span class="truncate">${p.direccion}</span>
-                            </p>
+                            <p class="text-[11px] text-slate-400 mb-3 flex items-center gap-1"><i data-lucide="map-pin" class="w-3 h-3"></i><span class="truncate">${p.direccion}</span></p>
                             <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 mb-4">
                                 <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Hora Programada</label>
                                 <div class="flex items-center gap-2">
                                     <i data-lucide="clock" class="w-4 h-4 text-slate-400"></i>
-                                    <input type="text" id="input-schedule-${p.id}" placeholder="--:--" value="${p.horario || ''}" onchange="updateSchedule('${p.docId}', this.value)" class="bg-transparent text-sm font-bold text-slate-700 outline-none w-full">
+                                    <input type="text" id="input-schedule-${p.id}" placeholder="--:--" value="${p.horario || ''}" onchange="updateSchedule(${p.id}, this.value)" class="bg-transparent text-sm font-bold text-slate-700 outline-none w-full">
                                 </div>
                             </div>
                         </div>
                         <div class="mt-auto">
-                            <div class="flex justify-between text-[11px] mb-1 font-bold">
-                                <span class="text-slate-500 uppercase">Progreso</span>
-                                <span class="text-blue-600">${p.completadas}/${p.totalSesiones}</span>
-                            </div>
-                            <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden mb-4">
-                                <div class="bg-blue-500 h-full transition-all" style="width:${perc}%"></div>
-                            </div>
-                            <button onclick="focusScheduleInput('${p.id}')" class="w-full bg-slate-800 text-white py-2.5 rounded-xl text-xs font-bold hover:bg-slate-900 transition flex items-center justify-center gap-2">Asignar Cita</button>
+                            <div class="flex justify-between text-[11px] mb-1 font-bold"><span class="text-slate-500 uppercase">Progreso</span><span class="text-blue-600">${p.completadas}/${p.totalSesiones}</span></div>
+                            <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden mb-4"><div class="bg-blue-500 h-full transition-all" style="width:${perc}%"></div></div>
+                            <button onclick="focusScheduleInput(${p.id})" class="w-full bg-slate-800 text-white py-2.5 rounded-xl text-xs font-bold hover:bg-slate-900 transition flex items-center justify-center gap-2">Asignar Cita</button>
                         </div>
                     </div>
                 `;
@@ -403,37 +315,26 @@
             initIcons();
         }
 
-        window.focusScheduleInput = function(id) { 
-            const input = document.getElementById(`input-schedule-${id}`);
-            if(input) {
-                input.focus();
-                input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        };
+        function focusScheduleInput(id) { document.getElementById(`input-schedule-${id}`).focus(); }
 
-        window.switchView = function(view) {
+        function switchView(view) {
             currentView = view;
             document.getElementById('view-list').classList.toggle('hidden', view !== 'list');
             document.getElementById('view-calendar').classList.toggle('hidden', view !== 'calendar');
-            
             document.getElementById('btn-view-list').className = (view === 'list') ? "px-6 py-2 rounded-xl text-sm font-bold transition view-btn-active" : "px-6 py-2 rounded-xl text-sm font-bold transition view-btn-inactive";
             document.getElementById('btn-view-calendar').className = (view === 'calendar') ? "px-6 py-2 rounded-xl text-sm font-bold transition view-btn-active" : "px-6 py-2 rounded-xl text-sm font-bold transition view-btn-inactive";
-            
-            renderAll();
-        };
+            if (view === 'list') renderPatients(); else renderCalendar();
+            initIcons();
+        }
 
         function renderCalendar() {
             const content = document.getElementById('calendarContent');
             const empty = document.getElementById('emptyState');
             const scheduled = patients.filter(p => p.horario && p.horario.trim() !== '').sort((a, b) => a.horario.localeCompare(b.horario));
             
-            if (scheduled.length === 0) {
-                content.innerHTML = '';
-                if(currentView === 'calendar') empty.classList.remove('hidden');
-                return;
-            }
-            
+            if (scheduled.length === 0) { content.innerHTML = ''; if(currentView === 'calendar') empty.classList.remove('hidden'); return; }
             empty.classList.add('hidden');
+            
             content.innerHTML = scheduled.map(p => `
                 <div class="flex gap-4 items-center group">
                     <div class="w-20 text-right flex-shrink-0"><span class="text-sm font-black text-blue-600">${p.horario}</span></div>
@@ -444,12 +345,8 @@
                                 <p class="text-[11px] text-slate-500 truncate">${p.direccion}</p>
                             </div>
                             <div class="flex gap-2">
-                                <button onclick="openConfirmAgendaModal('${p.docId}')" class="bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-100 transition flex items-center gap-1">
-                                    <i data-lucide="check-circle-2" class="w-3 h-3"></i> Realizada
-                                </button>
-                                <button onclick="openEditModal('${p.docId}')" class="bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-slate-50 transition flex items-center gap-1">
-                                    <i data-lucide="edit-3" class="w-3 h-3"></i> Modificar
-                                </button>
+                                <button onclick="openConfirmAgendaModal(${p.id})" class="bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-100 transition flex items-center gap-1"><i data-lucide="check-circle-2" class="w-3 h-3"></i> Realizada</button>
+                                <button onclick="openEditModal(${p.id})" class="bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-slate-50 transition flex items-center gap-1"><i data-lucide="edit-3" class="w-3 h-3"></i> Modificar</button>
                             </div>
                         </div>
                     </div>
@@ -458,29 +355,27 @@
             initIcons();
         }
 
-        window.updateSchedule = async function(docId, value) {
-            if (!currentUser) return;
-            try {
-                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'patients', docId);
-                await updateDoc(docRef, { horario: value });
-                if(value.trim() !== '') showToast("Cita programada en la nube");
-            } catch (error) {
-                showToast("Error al guardar en la nube");
+        function updateSchedule(patientId, value) {
+            const idx = patients.findIndex(p => p.id === patientId);
+            if (idx !== -1) { 
+                patients[idx].horario = value; 
+                saveData(); 
+                if(value.trim() !== '') showToast("Cita programada");
+                if(currentView === 'list') renderPatients(); else renderCalendar(); 
             }
-        };
+        }
 
-        window.openConfirmAgendaModal = function(docId) {
-            activePatientId = docId;
-            const p = patients.find(x => x.docId === docId);
+        function openConfirmAgendaModal(id) {
+            activePatientId = id;
+            const p = patients.find(x => x.id === id);
             if(!p) return;
             document.getElementById('confirmPatientName').innerText = p.nombre;
             const listDiv = document.getElementById('confirmTherapyList');
             listDiv.innerHTML = '';
-            
             ['fisica', 'ocupacional', 'respiratoria'].forEach(type => {
                 const t = p.terapias[type];
                 if(t.total > 0 && t.realizada < t.total) {
-                    const label = type === 'fisica' ? 'Física' : type === 'ocupacional' ? 'Ocupacional' : 'Respiratoria';
+                    const label = type.charAt(0).toUpperCase() + type.slice(1);
                     const item = document.createElement('label');
                     item.className = "flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-2xl cursor-pointer hover:bg-white transition";
                     item.innerHTML = `
@@ -493,97 +388,50 @@
                     listDiv.appendChild(item);
                 }
             });
-
-            if (listDiv.children.length === 0) {
-                listDiv.innerHTML = '<p class="text-center text-slate-500 py-4 font-medium italic">No quedan sesiones pendientes.</p>';
-            }
-
-            document.getElementById('confirmAgendaModal').classList.add('modal-active');
+            document.getElementById('confirmAgendaModal').classList.replace('hidden', 'flex');
             initIcons();
-        };
-
-        window.validateSelectedTherapies = async function() {
-            const p = patients.find(x => x.docId === activePatientId);
-            const selected = document.querySelectorAll('input[name="therapy-select"]:checked');
-            
-            if (selected.length === 0) {
-                showToast("Selecciona al menos una terapia");
-                return;
-            }
-            
-            const updatedTherapies = {...p.terapias};
-            let newCompletadas = p.completadas;
-
-            selected.forEach(cb => {
-                const type = cb.value;
-                if(updatedTherapies[type].realizada < updatedTherapies[type].total) {
-                    updatedTherapies[type].realizada++;
-                    newCompletadas++;
-                }
-            });
-            
-            try {
-                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'patients', activePatientId);
-                await updateDoc(docRef, { 
-                    terapias: updatedTherapies, 
-                    completadas: newCompletadas,
-                    horario: '' 
-                });
-                closeModal('confirmAgendaModal');
-                showToast("Progreso sincronizado en la nube");
-            } catch (error) {
-                showToast("Error al sincronizar");
-            }
-        };
-
-        window.openEditModal = function(docId) {
-            activePatientId = docId;
-            const p = patients.find(x => x.docId === docId);
-            document.getElementById('editModalPatientName').innerText = p.nombre;
-            document.getElementById('editAppointmentTime').value = p.horario || "";
-            document.getElementById('editAppointmentModal').classList.add('modal-active');
-            initIcons();
-        };
-
-        window.saveAppointmentEdit = async function() {
-            const newTime = document.getElementById('editAppointmentTime').value;
-            try {
-                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'patients', activePatientId);
-                await updateDoc(docRef, { horario: newTime });
-                closeModal('editAppointmentModal');
-                showToast("Cita actualizada en la nube");
-            } catch (error) {
-                showToast("Error al guardar");
-            }
-        };
-
-        window.confirmCancelAppointment = async function() {
-            if (confirm("¿Estás seguro de cancelar esta cita?")) {
-                try {
-                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'patients', activePatientId);
-                    await updateDoc(docRef, { horario: '' });
-                    closeModal('editAppointmentModal');
-                    showToast("Cita cancelada en la nube");
-                } catch (error) {
-                    showToast("Error al cancelar");
-                }
-            }
-        };
-
-        function renderAll() {
-            if (currentView === 'list') renderPatients();
-            else renderCalendar();
         }
 
-        window.closeModal = function(id) {
-            document.getElementById(id).classList.remove('modal-active');
-        };
+        function validateSelectedTherapies() {
+            const p = patients.find(x => x.id === activePatientId);
+            const selected = document.querySelectorAll('input[name="therapy-select"]:checked');
+            if (selected.length === 0) { alert("Selecciona al menos una terapia."); return; }
+            selected.forEach(cb => { if(p.terapias[cb.value].realizada < p.terapias[cb.value].total) { p.terapias[cb.value].realizada++; p.completadas++; } });
+            p.horario = ''; saveData(); closeModal('confirmAgendaModal'); showToast("Progreso guardado"); renderCalendar();
+        }
 
-        window.resetData = function() {
-            if(confirm("Esta opción solo se usa si quieres forzar una nueva carga desde el Excel. ¿Continuar?")) {
-                fetchSheetData();
+        function openEditModal(id) {
+            activePatientId = id;
+            const p = patients.find(x => x.id === id);
+            document.getElementById('editModalPatientName').innerText = p.nombre;
+            document.getElementById('editAppointmentTime').value = p.horario || "";
+            document.getElementById('editAppointmentModal').classList.replace('hidden', 'flex');
+        }
+
+        function saveAppointmentEdit() {
+            const newTime = document.getElementById('editAppointmentTime').value;
+            const idx = patients.findIndex(p => p.id === activePatientId);
+            patients[idx].horario = newTime;
+            saveData(); closeModal('editAppointmentModal'); showToast("Cita actualizada"); renderCalendar();
+        }
+
+        function confirmCancelAppointment() {
+            if (confirm("¿Cancelar esta cita?")) {
+                const idx = patients.findIndex(p => p.id === activePatientId);
+                patients[idx].horario = '';
+                saveData(); closeModal('editAppointmentModal'); renderCalendar();
             }
-        };
+        }
+
+        function closeModal(id) { document.getElementById(id).classList.replace('flex', 'hidden'); }
+        function saveData() { localStorage.setItem('terapia_patients', JSON.stringify(patients)); }
+        function resetData() { if(confirm("¿Borrar todos los datos locales?")) { patients = []; saveData(); location.reload(); } }
+
+        document.addEventListener('DOMContentLoaded', () => { 
+            if(patients.length > 0) renderPatients();
+            else fetchSheetData(); // Auto-fetch al cargar si está vacío
+            initIcons(); 
+        });
     </script>
 </body>
 </html>
