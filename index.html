@@ -65,8 +65,8 @@
             <div>
                 <h1 class="text-3xl font-bold text-slate-800 tracking-tight">Gestión de Terapias</h1>
                 <p class="text-slate-500 font-medium flex items-center gap-2">
-                    <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                    Sincronizado con Google Sheets
+                    <span id="syncIndicator" class="w-2 h-2 bg-slate-300 rounded-full"></span>
+                    <span id="syncStatusText">Conectando...</span>
                 </p>
             </div>
             <div class="flex gap-2">
@@ -167,13 +167,36 @@
         </div>
     </div>
 
-    <script>
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, updateDoc, onSnapshot, collection, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Configuración de Firebase
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        // URL del Google Sheet
         const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR3XP2U3MKFx76JAmsKf2h5Q-YODYrgZe1JeuK053Ip1BIYa8RuAJnDBJVjpbNOo_YqYcG1K92cRJ5i/pub?output=csv';
         
-        let patients = JSON.parse(localStorage.getItem('terapia_patients')) || [];
+        // Estado de la aplicación
+        let patients = [];
         let currentFilter = 'all';
         let currentView = 'list';
         let activePatientId = null;
+        let currentUser = null;
+
+        // --- Funciones de Utilidad ---
+        window.showToast = function(message) {
+            const toast = document.getElementById("toast");
+            toast.innerText = message;
+            toast.className = "show";
+            setTimeout(() => { toast.className = ""; }, 3000);
+        };
 
         function initIcons() { 
             if (typeof lucide !== 'undefined') {
@@ -183,14 +206,49 @@
 
         document.getElementById('todayDate').innerText = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
 
-        function showToast(message) {
-            const toast = document.getElementById("toast");
-            toast.innerText = message;
-            toast.className = "show";
-            setTimeout(() => { toast.className = ""; }, 3000);
-        }
+        // --- Autenticación y Carga de Datos Cloud ---
+        const initAuth = async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Auth error:", error);
+                showToast("Error de conexión");
+            }
+        };
 
-        async function fetchSheetData() {
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            if (user) {
+                const indicator = document.getElementById('syncIndicator');
+                indicator.classList.remove('bg-slate-300');
+                indicator.classList.add('bg-emerald-500', 'animate-pulse');
+                document.getElementById('syncStatusText').innerText = "Sincronizado en tiempo real";
+                
+                // Suscribirse a cambios en Firestore (Colección Pública para multi-dispositivo)
+                const q = collection(db, 'artifacts', appId, 'public', 'data', 'patients');
+                onSnapshot(q, (snapshot) => {
+                    patients = snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() }));
+                    renderAll();
+                }, (error) => {
+                    console.error("Firestore error:", error);
+                    showToast("Error al leer datos de la nube");
+                });
+            }
+        });
+
+        initAuth();
+
+        // --- Lógica de Negocio ---
+        window.fetchSheetData = async function() {
+            if (!currentUser) {
+                showToast("Espera a que se establezca la conexión...");
+                return;
+            }
+
             const btn = document.getElementById('syncBtn');
             const icon = document.getElementById('syncIcon');
             btn.disabled = true;
@@ -201,7 +259,7 @@
                 if (!response.ok) throw new Error("Error de red");
                 const csvText = await response.text();
                 const json = csvToJSON(csvText);
-                processPatients(json);
+                await processPatients(json);
                 showToast("Sincronización completa");
             } catch (error) {
                 console.error(error);
@@ -210,17 +268,17 @@
                 btn.disabled = false;
                 icon.classList.remove('animate-spin-slow');
             }
-        }
+        };
 
         function csvToJSON(csv) {
             const lines = csv.split(/\r?\n/);
             const result = [];
+            if (lines.length === 0) return result;
             const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
 
             for (let i = 1; i < lines.length; i++) {
                 if (!lines[i]) continue;
                 const obj = {};
-                // Regex mejorada para manejar comas dentro de comillas
                 const currentline = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
 
                 for (let j = 0; j < headers.length; j++) {
@@ -235,8 +293,8 @@
             return result;
         }
 
-        function processPatients(data) {
-            const newPatients = data.map((row, index) => {
+        async function processPatients(data) {
+            for (const row of data) {
                 let grupo = 'otros';
                 const direccion = String(row.Direccion || row.Dirección || row.Ciudad || "").toLowerCase().trim();
                 const diaValorOriginal = String(row.Dia || row.Día || "").trim();
@@ -253,8 +311,8 @@
                 const nombreKey = row.Nombre || row.Paciente || 'Desconocido';
                 const existing = patients.find(p => p.nombre === nombreKey);
 
-                return {
-                    id: existing ? existing.id : (Date.now() + index),
+                const patientData = {
+                    id: existing ? existing.id : Date.now() + Math.random(),
                     nombre: nombreKey,
                     direccion: row.Direccion || row.Dirección || row.Ciudad || 'Sin Dirección',
                     dia: diaValorOriginal,
@@ -268,14 +326,14 @@
                     completadas: existing ? existing.completadas : 0,
                     totalSesiones: (tFisica + tOcupacional + tRespira) || 0
                 };
-            });
 
-            patients = newPatients;
-            saveData();
-            renderAll();
+                // Guardar en Firestore usando el nombre como ID de documento para evitar duplicados
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'patients', btoa(nombreKey).replace(/=/g, ''));
+                await setDoc(docRef, patientData, { merge: true });
+            }
         }
 
-        function filterByGroup(groupId) {
+        window.filterByGroup = function(groupId) {
             currentFilter = groupId;
             const tabs = ['all', 'circasia', 'lun_mie', 'otros'];
             tabs.forEach(id => {
@@ -289,7 +347,7 @@
                 }
             });
             renderPatients();
-        }
+        };
 
         function renderPatients() {
             const grid = document.getElementById('patientsGrid');
@@ -325,7 +383,7 @@
                                 <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Hora Programada</label>
                                 <div class="flex items-center gap-2">
                                     <i data-lucide="clock" class="w-4 h-4 text-slate-400"></i>
-                                    <input type="text" id="input-schedule-${p.id}" placeholder="--:--" value="${p.horario || ''}" onchange="updateSchedule(${p.id}, this.value)" class="bg-transparent text-sm font-bold text-slate-700 outline-none w-full">
+                                    <input type="text" id="input-schedule-${p.id}" placeholder="--:--" value="${p.horario || ''}" onchange="updateSchedule('${p.docId}', this.value)" class="bg-transparent text-sm font-bold text-slate-700 outline-none w-full">
                                 </div>
                             </div>
                         </div>
@@ -337,7 +395,7 @@
                             <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden mb-4">
                                 <div class="bg-blue-500 h-full transition-all" style="width:${perc}%"></div>
                             </div>
-                            <button onclick="focusScheduleInput(${p.id})" class="w-full bg-slate-800 text-white py-2.5 rounded-xl text-xs font-bold hover:bg-slate-900 transition flex items-center justify-center gap-2">Asignar Cita</button>
+                            <button onclick="focusScheduleInput('${p.id}')" class="w-full bg-slate-800 text-white py-2.5 rounded-xl text-xs font-bold hover:bg-slate-900 transition flex items-center justify-center gap-2">Asignar Cita</button>
                         </div>
                     </div>
                 `;
@@ -345,15 +403,15 @@
             initIcons();
         }
 
-        function focusScheduleInput(id) { 
+        window.focusScheduleInput = function(id) { 
             const input = document.getElementById(`input-schedule-${id}`);
             if(input) {
                 input.focus();
                 input.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
-        }
+        };
 
-        function switchView(view) {
+        window.switchView = function(view) {
             currentView = view;
             document.getElementById('view-list').classList.toggle('hidden', view !== 'list');
             document.getElementById('view-calendar').classList.toggle('hidden', view !== 'calendar');
@@ -362,7 +420,7 @@
             document.getElementById('btn-view-calendar').className = (view === 'calendar') ? "px-6 py-2 rounded-xl text-sm font-bold transition view-btn-active" : "px-6 py-2 rounded-xl text-sm font-bold transition view-btn-inactive";
             
             renderAll();
-        }
+        };
 
         function renderCalendar() {
             const content = document.getElementById('calendarContent');
@@ -386,10 +444,10 @@
                                 <p class="text-[11px] text-slate-500 truncate">${p.direccion}</p>
                             </div>
                             <div class="flex gap-2">
-                                <button onclick="openConfirmAgendaModal(${p.id})" class="bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-100 transition flex items-center gap-1">
+                                <button onclick="openConfirmAgendaModal('${p.docId}')" class="bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-100 transition flex items-center gap-1">
                                     <i data-lucide="check-circle-2" class="w-3 h-3"></i> Realizada
                                 </button>
-                                <button onclick="openEditModal(${p.id})" class="bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-slate-50 transition flex items-center gap-1">
+                                <button onclick="openEditModal('${p.docId}')" class="bg-white border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-slate-50 transition flex items-center gap-1">
                                     <i data-lucide="edit-3" class="w-3 h-3"></i> Modificar
                                 </button>
                             </div>
@@ -400,19 +458,20 @@
             initIcons();
         }
 
-        function updateSchedule(patientId, value) {
-            const idx = patients.findIndex(p => p.id === patientId);
-            if (idx !== -1) { 
-                patients[idx].horario = value; 
-                saveData(); 
-                if(value.trim() !== '') showToast("Cita programada");
-                renderAll();
+        window.updateSchedule = async function(docId, value) {
+            if (!currentUser) return;
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'patients', docId);
+                await updateDoc(docRef, { horario: value });
+                if(value.trim() !== '') showToast("Cita programada en la nube");
+            } catch (error) {
+                showToast("Error al guardar en la nube");
             }
-        }
+        };
 
-        function openConfirmAgendaModal(id) {
-            activePatientId = id;
-            const p = patients.find(x => x.id === id);
+        window.openConfirmAgendaModal = function(docId) {
+            activePatientId = docId;
+            const p = patients.find(x => x.docId === docId);
             if(!p) return;
             document.getElementById('confirmPatientName').innerText = p.nombre;
             const listDiv = document.getElementById('confirmTherapyList');
@@ -436,15 +495,15 @@
             });
 
             if (listDiv.children.length === 0) {
-                listDiv.innerHTML = '<p class="text-center text-slate-500 py-4 font-medium italic">No quedan sesiones pendientes para este paciente.</p>';
+                listDiv.innerHTML = '<p class="text-center text-slate-500 py-4 font-medium italic">No quedan sesiones pendientes.</p>';
             }
 
             document.getElementById('confirmAgendaModal').classList.add('modal-active');
             initIcons();
-        }
+        };
 
-        function validateSelectedTherapies() {
-            const p = patients.find(x => x.id === activePatientId);
+        window.validateSelectedTherapies = async function() {
+            const p = patients.find(x => x.docId === activePatientId);
             const selected = document.querySelectorAll('input[name="therapy-select"]:checked');
             
             if (selected.length === 0) {
@@ -452,84 +511,79 @@
                 return;
             }
             
+            const updatedTherapies = {...p.terapias};
+            let newCompletadas = p.completadas;
+
             selected.forEach(cb => {
                 const type = cb.value;
-                if(p.terapias[type].realizada < p.terapias[type].total) {
-                    p.terapias[type].realizada++;
-                    p.completadas++;
+                if(updatedTherapies[type].realizada < updatedTherapies[type].total) {
+                    updatedTherapies[type].realizada++;
+                    newCompletadas++;
                 }
             });
             
-            p.horario = ''; // Quitamos de la agenda del día
-            saveData();
-            closeModal('confirmAgendaModal');
-            showToast("Progreso guardado correctamente");
-            renderAll();
-        }
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'patients', activePatientId);
+                await updateDoc(docRef, { 
+                    terapias: updatedTherapies, 
+                    completadas: newCompletadas,
+                    horario: '' 
+                });
+                closeModal('confirmAgendaModal');
+                showToast("Progreso sincronizado en la nube");
+            } catch (error) {
+                showToast("Error al sincronizar");
+            }
+        };
 
-        function openEditModal(id) {
-            activePatientId = id;
-            const p = patients.find(x => x.id === id);
+        window.openEditModal = function(docId) {
+            activePatientId = docId;
+            const p = patients.find(x => x.docId === docId);
             document.getElementById('editModalPatientName').innerText = p.nombre;
             document.getElementById('editAppointmentTime').value = p.horario || "";
             document.getElementById('editAppointmentModal').classList.add('modal-active');
             initIcons();
-        }
+        };
 
-        function saveAppointmentEdit() {
+        window.saveAppointmentEdit = async function() {
             const newTime = document.getElementById('editAppointmentTime').value;
-            const idx = patients.findIndex(p => p.id === activePatientId);
-            if (idx !== -1) {
-                patients[idx].horario = newTime;
-                saveData();
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'patients', activePatientId);
+                await updateDoc(docRef, { horario: newTime });
                 closeModal('editAppointmentModal');
-                showToast("Cita actualizada");
-                renderAll();
+                showToast("Cita actualizada en la nube");
+            } catch (error) {
+                showToast("Error al guardar");
             }
-        }
+        };
 
-        function confirmCancelAppointment() {
+        window.confirmCancelAppointment = async function() {
             if (confirm("¿Estás seguro de cancelar esta cita?")) {
-                const idx = patients.findIndex(p => p.id === activePatientId);
-                if (idx !== -1) {
-                    patients[idx].horario = '';
-                    saveData();
+                try {
+                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'patients', activePatientId);
+                    await updateDoc(docRef, { horario: '' });
                     closeModal('editAppointmentModal');
-                    showToast("Cita cancelada");
-                    renderAll();
+                    showToast("Cita cancelada en la nube");
+                } catch (error) {
+                    showToast("Error al cancelar");
                 }
             }
-        }
+        };
 
         function renderAll() {
             if (currentView === 'list') renderPatients();
             else renderCalendar();
         }
 
-        function closeModal(id) {
+        window.closeModal = function(id) {
             document.getElementById(id).classList.remove('modal-active');
-        }
+        };
 
-        function saveData() {
-            localStorage.setItem('terapia_patients', JSON.stringify(patients));
-        }
-
-        function resetData() {
-            if(confirm("¿Borrar todos los datos locales y progreso? Esta acción no se puede deshacer.")) {
-                patients = [];
-                saveData();
-                location.reload();
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', () => { 
-            if(patients.length > 0) {
-                renderAll();
-            } else {
+        window.resetData = function() {
+            if(confirm("Esta opción solo se usa si quieres forzar una nueva carga desde el Excel. ¿Continuar?")) {
                 fetchSheetData();
             }
-            initIcons(); 
-        });
+        };
     </script>
 </body>
 </html>
