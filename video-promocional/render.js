@@ -1,16 +1,16 @@
-// Renderiza index.html cuadro a cuadro y lo codifica en un MP4 vertical (1080x1920, 30 fps).
-//   node render.js salida.mp4                -> video completo (sin audio)
-//   node render.js --stills carpeta 0 6 24.5 -> capturas PNG en esos segundos
+// Renderiza una de las animaciones cuadro a cuadro y la codifica en un MP4 vertical (1080x1920, 30 fps).
+//   node render.js promocional.html salida.mp4                -> video completo (sin audio)
+//   node render.js promocional.html --stills carpeta 0 6 24.5 -> capturas PNG en esos segundos
 const { chromium } = require('playwright');
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
 const FPS = 30;
-const url = 'file://' + path.join(__dirname, 'index.html') + '?render';
 
 (async () => {
-  const args = process.argv.slice(2);
+  const [pagina, ...args] = process.argv.slice(2);
+  const url = 'file://' + path.resolve(__dirname, pagina) + '?render';
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1080, height: 1920 }, deviceScaleFactor: 1 });
   await page.goto(url);

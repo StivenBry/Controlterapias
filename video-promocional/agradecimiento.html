@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Video de agradecimiento</title>
+<link rel="stylesheet" href="estilos.css">
+<style>
+  .emblemwrap { position: relative; margin-bottom: 70px; }
+  .emblemwrap .burst, .badgeslot .burst { left: 50%; top: 50%; }
+  .badgeslot { position: relative; display: flex; }
+  .popcorn { font-size: 230px; line-height: 1; margin-bottom: 56px; }
+  .popwrap { position: relative; }
+  .popwrap .burst { left: 50%; top: 40%; }
+  .signoff { display: flex; align-items: center; gap: 22px; margin-top: 80px; font-family: 'Inter Display', 'Inter', sans-serif; font-weight: 800; font-size: 56px; letter-spacing: -0.02em; }
+  .signoff .emblem { width: 92px; height: 92px; filter: drop-shadow(0 10px 30px rgba(59,140,255,.5)); }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="blob b1"></div>
+  <div class="blob b2"></div>
+  <div class="blob b3"></div>
+
+  <!-- 1. Bienvenida -->
+  <section class="scene" id="s-bienvenida">
+    <div class="emblemwrap">
+      <div class="burst" id="burst-1"></div>
+      <svg class="emblem" id="emblem" viewBox="0 0 24 24">
+        <defs><linearGradient id="eg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5fd39a"/><stop offset=".5" stop-color="#36c2c9"/><stop offset="1" stop-color="#3b8cff"/></linearGradient></defs>
+        <g id="emblem-heart">
+          <path fill="url(#eg)" d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+          <path fill="#fff" d="M10.3 8.4v5.2l4.3-2.6Z" stroke="#fff" stroke-width=".6" stroke-linejoin="round"/>
+        </g>
+      </svg>
+    </div>
+    <h1 class="h1" id="bv-1">¡Te doy la bienvenida!</h1>
+    <p class="lead" id="bv-2" style="margin-top:44px; font-size:54px">Ya eres parte de</p>
+    <p class="h2 wordmark" id="bv-3"><span class="grad">Pasiones en Pantalla</span></p>
+  </section>
+
+  <!-- 2. Gracias -->
+  <section class="scene" id="s-gracias">
+    <svg class="heart" id="heart" viewBox="0 0 24 24">
+      <defs><linearGradient id="hg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5fd39a"/><stop offset=".5" stop-color="#36c2c9"/><stop offset="1" stop-color="#3b8cff"/></linearGradient></defs>
+      <path fill="url(#hg)" d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+    </svg>
+    <h2 class="h2" id="gr-1">¡Gracias por <span class="grad">suscribirte</span>!</h2>
+    <p class="lead" id="gr-2" style="margin-top:36px">De verdad, tu apoyo significa muchísimo para mí y me ayuda a seguir creando.</p>
+  </section>
+
+  <!-- 3. Lo que desbloqueó -->
+  <section class="scene" id="s-tuyo">
+    <h2 class="h2" id="tu-t">Esto ya es <span class="grad">tuyo</span> <span class="emo">🎉</span></h2>
+    <div class="list" id="tu-list">
+      <div class="row" style="--c1:#34d3b4; --c2:#0e7f74"><div class="ri"><i data-icon="lock"></i></div><span>Contenido exclusivo</span><div class="chk"><i data-icon="check"></i></div></div>
+      <div class="row" style="--c1:#fbbf24; --c2:#d97706"><div class="ri"><i data-icon="bag"></i></div><span>Descuentos</span><div class="chk"><i data-icon="check"></i></div></div>
+      <div class="row" style="--c1:#fb7185; --c2:#e11d48"><div class="ri"><i data-icon="video"></i></div><span>Videos en vivo</span><div class="chk"><i data-icon="check"></i></div></div>
+      <div class="row" style="--c1:#c084fc; --c2:#7c3aed"><div class="ri"><i data-icon="sticker"></i></div><span>Stickers personalizados</span><div class="chk"><i data-icon="check"></i></div></div>
+      <div class="row" style="--c1:#60a5fa; --c2:#2563eb"><div class="ri"><i data-icon="chat"></i></div><span>Comentarios destacados</span><div class="chk"><i data-icon="check"></i></div></div>
+      <div class="row" style="--c1:#3fb57a; --c2:#0a69a3"><div class="ri"><i data-icon="badge"></i></div><span>Insignia de suscriptor</span><div class="chk"><i data-icon="check"></i></div></div>
+    </div>
+  </section>
+
+  <!-- 4. Insignia -->
+  <section class="scene" id="s-insignia">
+    <div class="tilewrap" id="in-tile">
+      <div class="tilering" id="in-ring"></div>
+      <div class="tile"><i data-icon="badge"></i></div>
+    </div>
+    <h2 class="h2" id="in-1">Ya tienes tu <span class="grad">insignia</span></h2>
+    <div class="namerow" id="in-row" style="margin-top:56px">
+      <div class="avatar"><i data-icon="user"></i></div>Tu nombre
+      <span class="badgeslot"><span class="burst" id="burst-badge"></span><span class="minibadge" id="in-badge"><i data-icon="badge"></i></span></span>
+    </div>
+    <p class="lead" id="in-2" style="margin-top:50px">Aparecerá junto a tu nombre cuando comentes en mi página.</p>
+  </section>
+
+  <!-- 5. Cierre -->
+  <section class="scene" id="s-funcion">
+    <div class="popwrap">
+      <div class="burst" id="burst-2"></div>
+      <div class="popcorn" id="popcorn"><span class="emo" id="popcorn-in">🍿</span></div>
+    </div>
+    <h1 class="h1" id="fn-1">¡Que empiece la <span class="grad">función!</span></h1>
+    <p class="lead" id="fn-2" style="margin-top:40px">Nos vemos en el próximo en vivo 💙</p>
+    <div class="signoff" id="fn-3">
+      <svg class="emblem" viewBox="0 0 24 24">
+        <path fill="url(#eg)" d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+        <path fill="#fff" d="M10.3 8.4v5.2l4.3-2.6Z" stroke="#fff" stroke-width=".6" stroke-linejoin="round"/>
+      </svg>
+      <span class="grad">Pasiones en Pantalla</span>
+    </div>
+  </section>
+
+  <div class="grain"></div>
+</div>
+
+<script src="motor.js"></script>
+<script>
+  const HEARTBEAT = [{ transform: 'scale(1)' }, { transform: 'scale(1.1)', offset: .15 }, { transform: 'scale(1)', offset: .3 }, { transform: 'scale(1.08)', offset: .45 }, { transform: 'scale(1)', offset: .6 }];
+
+  // 1. Bienvenida (0 – 4.5)
+  scene('#s-bienvenida', 0.05, 4.5);
+  pop('#emblem', 0.15, 0.8, -10);
+  confetti('#burst-1', 0.3, 44, { seed: 11, spread: 2, dist: [300, 420], fall: 480 });
+  loop('#emblem-heart', HEARTBEAT, 1.1, 1.2);
+  $('#emblem-heart').style.transformOrigin = '12px 12px';
+  fadeUp('#bv-1', 0.5);
+  fadeUp('#bv-2', 1.1);
+  pop('#bv-3', 1.35, 0.7, -3);
+
+  // 2. Gracias (4.5 – 9)
+  scene('#s-gracias', 4.5, 9);
+  pop('#heart', 4.55, 0.8, -10);
+  loop('#heart path', HEARTBEAT, 5.3, 1.2);
+  $('#heart path').style.transformOrigin = '12px 12px';
+  fadeUp('#gr-1', 4.8);
+  fadeUp('#gr-2', 5.5);
+
+  // 3. Lo que desbloqueó (9 – 15)
+  scene('#s-tuyo', 9, 15);
+  fadeUp('#tu-t', 9.05);
+  fadeUp('#tu-list', 9.15, 0.5, 30);
+  document.querySelectorAll('#tu-list .row').forEach((r, i) => {
+    anim(r, [{ opacity: 0, transform: 'translateX(-50px)' }, { opacity: 1, transform: 'translateX(0)' }], 9.3 + i * 0.22, 0.5);
+    pop(r.querySelector('.chk'), 9.45 + i * 0.22, 0.45, -20);
+  });
+
+  // 4. Insignia (15 – 19.5)
+  scene('#s-insignia', 15, 19.5);
+  pop('#in-tile', 15.05, 0.8);
+  loop('#in-ring', [{ transform: 'scale(1)', opacity: 0 }, { transform: 'scale(1)', opacity: .8, offset: .08 }, { transform: 'scale(1.45)', opacity: 0 }], 15.6, 1.6, 'ease-out');
+  fadeUp('#in-1', 15.3);
+  fadeUp('#in-row', 15.6, 0.6, 40);
+  pop('#in-badge', 16.2, 0.7, -30);
+  confetti('#burst-badge', 16.3, 18, { seed: 5, spread: 2, dist: [70, 110], fall: 140 });
+  fadeUp('#in-2', 16.6);
+
+  // 5. Cierre (19.5 – fin)
+  scene('#s-funcion', 19.5);
+  pop('#popcorn', 19.55, 0.8, -15);
+  confetti('#burst-2', 19.75, 36, { seed: 23, spread: 1.4, dist: [280, 360], fall: 520 });
+  loop('#popcorn-in', [{ transform: 'rotate(-6deg)' }, { transform: 'rotate(6deg)' }], 20.4, 0.6, 'ease-in-out', 'alternate');
+  fadeUp('#fn-1', 19.8);
+  fadeUp('#fn-2', 20.4);
+  fadeUp('#fn-3', 21.0);
+
+  start(25.5);
+</script>
+</body>
+</html>

@@ -1,0 +1,142 @@
+/* Estilos compartidos por los videos (lienzo vertical de 1080x1920). */
+:root {
+  --bg: #0b1018;
+  --text: #f5f7fb;
+  --muted: #aab4c3;
+  --fb: #0866ff;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: #000; }
+body { display: flex; align-items: center; justify-content: center; min-height: 100vh; overflow: hidden; }
+body.render { display: block; }
+
+#stage {
+  position: relative; width: 1080px; height: 1920px; flex: none; overflow: hidden;
+  background: var(--bg); color: var(--text);
+  font-family: 'Inter', 'Noto Color Emoji', sans-serif;
+}
+
+/* Fondo */
+.blob { position: absolute; width: 1200px; height: 1200px; border-radius: 50%; }
+.b1 { left: -520px; top: -320px; background: radial-gradient(circle, rgba(63,174,115,.50) 0%, rgba(63,174,115,0) 62%); }
+.b2 { right: -560px; top: 560px; background: radial-gradient(circle, rgba(10,106,166,.60) 0%, rgba(10,106,166,0) 62%); }
+.b3 { left: -380px; bottom: -560px; background: radial-gradient(circle, rgba(31,154,154,.45) 0%, rgba(31,154,154,0) 62%); }
+.grain {
+  position: absolute; inset: 0; opacity: .07; mix-blend-mode: overlay; pointer-events: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* Escenas: contenido centrado dentro de la zona segura de Reels */
+.scene {
+  position: absolute; inset: 0; opacity: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 220px 100px 420px; text-align: center;
+}
+
+.h1 { font-family: 'Inter Display', 'Inter', sans-serif; font-weight: 800; font-size: 112px; line-height: 1.04; letter-spacing: -0.03em; text-wrap: balance; }
+.h2 { font-family: 'Inter Display', 'Inter', sans-serif; font-weight: 800; font-size: 88px; line-height: 1.08; letter-spacing: -0.025em; text-wrap: balance; }
+.lead { font-size: 50px; line-height: 1.32; font-weight: 500; color: var(--muted); text-wrap: balance; }
+.lead b { color: var(--text); font-weight: 700; }
+.grad { background: linear-gradient(90deg, #5fd39a, #36c2c9 50%, #4aa3ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.emo { display: inline-block; }
+
+/* Insignia de suscripciones de Facebook */
+.tile {
+  width: 300px; height: 300px; border-radius: 76px; display: grid; place-items: center; color: #e8eef3;
+  background: linear-gradient(145deg, #45a86a, #1f9393 55%, #0a69a3);
+  box-shadow: 0 34px 90px -10px rgba(25,150,150,.55), inset 0 3px 0 rgba(255,255,255,.22);
+}
+.tile svg { width: 180px; height: 180px; stroke-width: 1.1; }
+.tilewrap { position: relative; margin-bottom: 80px; }
+.tilering { position: absolute; inset: 0; border-radius: 76px; border: 4px solid rgba(95,211,154,.7); }
+
+/* Emblema de la página: corazón con botón de reproducir */
+.emblem { width: 260px; height: 260px; filter: drop-shadow(0 26px 60px rgba(59,140,255,.5)); }
+.wordmark { font-size: 104px; margin-top: 18px; }
+
+/* Beneficios */
+.glow { position: absolute; left: 50%; top: 600px; width: 1300px; height: 1300px; margin: -650px 0 0 -650px; border-radius: 50%; background: radial-gradient(circle, var(--c1s) 0%, transparent 58%); opacity: .6; }
+.pill {
+  display: inline-flex; align-items: center; gap: 12px; font-size: 34px; font-weight: 600; color: #dfe6ef;
+  padding: 14px 32px; border-radius: 999px; background: rgba(255,255,255,.07); border: 2px solid rgba(255,255,255,.12);
+}
+.pill b { color: var(--c1); font-weight: 800; }
+.itile {
+  width: 250px; height: 250px; border-radius: 66px; display: grid; place-items: center; color: #fff;
+  background: linear-gradient(145deg, var(--c1), var(--c2));
+  box-shadow: 0 30px 90px -12px var(--c1s), inset 0 3px 0 rgba(255,255,255,.25);
+  margin: 54px 0 58px;
+}
+.itile svg { width: 132px; height: 132px; stroke-width: 1.8; }
+.btitle { margin-bottom: 26px; }
+.bdesc { max-width: 860px; }
+.extra { margin-top: 54px; display: flex; gap: 22px; align-items: center; justify-content: center; }
+
+.chip {
+  display: inline-flex; align-items: center; gap: 14px; font-size: 38px; font-weight: 600;
+  padding: 20px 34px; border-radius: 999px; background: rgba(255,255,255,.08); border: 2px solid rgba(255,255,255,.13);
+}
+.chip.live { background: #e11d48; border-color: #fb7185; color: #fff; font-weight: 800; letter-spacing: .06em; }
+.chip.live .dot { width: 22px; height: 22px; border-radius: 50%; background: #fff; }
+.coupon {
+  display: flex; align-items: center; gap: 26px; padding: 22px 42px; border-radius: 30px;
+  border: 3px dashed #fbbf24; background: rgba(251,191,36,.09); font-size: 38px; font-weight: 700; color: #fde68a; text-align: left;
+}
+.coupon .pct { font-family: 'Inter Display', 'Inter', sans-serif; font-size: 76px; font-weight: 900; color: #fbbf24; }
+.stk { width: 156px; height: 156px; border-radius: 42px; background: #fff; display: grid; place-items: center; font-size: 96px; box-shadow: 0 18px 44px rgba(0,0,0,.4); }
+.stkw:nth-child(1) .stk { transform: rotate(-9deg); }
+.stkw:nth-child(2) .stk { transform: rotate(4deg) translateY(-18px); }
+.stkw:nth-child(3) .stk { transform: rotate(10deg); }
+.comment {
+  display: flex; gap: 22px; align-items: center; text-align: left; padding: 24px 36px 24px 26px; border-radius: 36px;
+  background: rgba(96,165,250,.13); border: 3px solid #60a5fa; box-shadow: 0 0 70px rgba(96,165,250,.35);
+}
+.avatar { width: 88px; height: 88px; border-radius: 50%; flex: none; display: grid; place-items: center; color: #fff; background: linear-gradient(145deg, #5fd39a, #3b8cff); }
+.avatar svg { width: 52px; height: 52px; stroke-width: 2; }
+.cname { display: flex; align-items: center; gap: 12px; font-size: 34px; font-weight: 700; }
+.ctext { font-size: 40px; color: #e8eef6; margin-top: 4px; }
+.tagdest { font-size: 24px; font-weight: 800; letter-spacing: .04em; color: #bfdbfe; background: rgba(96,165,250,.25); padding: 5px 14px; border-radius: 999px; }
+.minibadge { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; color: #fff; background: linear-gradient(145deg, #45a86a, #0a69a3); }
+.minibadge svg { width: 30px; height: 30px; stroke-width: 1.6; }
+.namerow {
+  display: flex; align-items: center; gap: 22px; padding: 20px 40px 20px 20px; border-radius: 999px;
+  background: rgba(255,255,255,.08); border: 2px solid rgba(255,255,255,.14); font-size: 46px; font-weight: 700;
+}
+.namerow .minibadge { width: 66px; height: 66px; border-radius: 18px; box-shadow: 0 0 40px rgba(63,174,115,.55); }
+.namerow .minibadge svg { width: 48px; height: 48px; }
+
+#dots { position: absolute; left: 0; right: 0; top: 1510px; display: flex; justify-content: center; gap: 16px; opacity: 0; }
+#dots i { display: block; width: 18px; height: 18px; border-radius: 9px; background: rgba(255,255,255,.25); }
+
+/* Lista de beneficios */
+.list { width: 880px; margin: 44px 0 40px; padding: 10px 34px; border-radius: 40px; background: rgba(255,255,255,.05); border: 2px solid rgba(255,255,255,.08); }
+.row { display: flex; align-items: center; gap: 26px; height: 98px; }
+.row + .row { border-top: 1px solid rgba(255,255,255,.07); }
+.ri { width: 64px; height: 64px; border-radius: 18px; flex: none; display: grid; place-items: center; color: #fff; background: linear-gradient(145deg, var(--c1), var(--c2)); }
+.ri svg { width: 36px; height: 36px; stroke-width: 2; }
+.row span { flex: 1; text-align: left; font-size: 40px; font-weight: 600; }
+.chk { width: 56px; height: 56px; border-radius: 14px; flex: none; display: grid; place-items: center; color: #fff; background: var(--fb); }
+.chk svg { width: 38px; height: 38px; stroke-width: 3; }
+.price { padding: 24px 70px 30px; border-radius: 40px; background: rgba(8,102,255,.12); border: 2px solid rgba(74,163,255,.35); }
+.price .pre { font-size: 44px; font-weight: 600; color: var(--muted); }
+.amount { font-family: 'Inter Display', 'Inter', sans-serif; font-weight: 900; font-size: 156px; line-height: 1.05; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.amount small { font-size: 54px; font-weight: 700; letter-spacing: -0.01em; color: var(--text); }
+
+/* Corazón */
+.heart { width: 230px; height: 230px; margin-bottom: 64px; filter: drop-shadow(0 24px 60px rgba(59,140,255,.5)); }
+
+/* Botón de suscribirse */
+.btnwrap { position: relative; margin-top: 76px; }
+.fbbtn {
+  width: 760px; height: 150px; border-radius: 38px; display: flex; align-items: center; justify-content: center; gap: 22px;
+  background: var(--fb); color: #fff; font-size: 62px; font-weight: 700; box-shadow: 0 26px 64px rgba(8,102,255,.5);
+}
+.fbbtn svg { width: 74px; height: 74px; stroke-width: 1.7; }
+.btnring { position: absolute; inset: 0; border-radius: 38px; border: 5px solid rgba(74,163,255,.9); opacity: 0; }
+.tap { position: absolute; left: 50%; top: 50%; width: 0; height: 0; }
+.ripple { position: absolute; width: 90px; height: 90px; margin: -45px; border-radius: 50%; background: rgba(255,255,255,.7); opacity: 0; }
+.hand { position: absolute; font-size: 150px; line-height: 1; margin: -12px 0 0 -70px; opacity: 0; }
+
+/* Confeti */
+.burst { position: absolute; width: 0; height: 0; }
+.burst i { position: absolute; display: block; opacity: 0; }

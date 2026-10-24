@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Video promocional</title>
+<link rel="stylesheet" href="estilos.css">
+<style>
+  .ctalead { margin-top: 30px; }
+  .ctaend { margin-top: 90px; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="blob b1"></div>
+  <div class="blob b2"></div>
+  <div class="blob b3"></div>
+
+  <!-- 1. Saludo -->
+  <section class="scene" id="s-hola">
+    <div class="tilewrap" id="hola-tile">
+      <div class="tilering" id="hola-ring"></div>
+      <div class="tile"><i data-icon="badge"></i></div>
+    </div>
+    <h1 class="h1" id="hola-1">¡Hola! <span class="emo" id="wave">👋</span></h1>
+    <p class="lead" id="hola-2" style="margin-top:34px; font-size:54px">Ahora puedes suscribirte a</p>
+    <p class="h2" id="hola-3" style="margin-top:10px; font-size:92px"><span class="grad">Pasiones en Pantalla</span></p>
+  </section>
+
+  <!-- 2. Pregunta -->
+  <section class="scene" id="s-que">
+    <h1 class="h1" id="que-1">¿Y qué <span class="grad">ganas</span> tú?</h1>
+    <p class="lead" id="que-2" style="margin-top:36px; font-size:56px">Te cuento todo <span class="emo" id="point">👇</span></p>
+  </section>
+
+  <!-- 3–8. Beneficios -->
+  <section class="scene benefit" id="b1" style="--c1:#34d3b4; --c2:#0e7f74; --c1s:rgba(52,211,180,.42)">
+    <div class="glow"></div>
+    <div class="pill">Beneficio <b>1</b> de 6</div>
+    <div class="itile"><i data-icon="lock"></i></div>
+    <h2 class="h2 btitle">Contenido exclusivo</h2>
+    <p class="lead bdesc">Publicaciones, historias y reels que solo pueden ver mis suscriptores.</p>
+    <div class="extra"><div class="chip">🔒 Solo para suscriptores</div></div>
+  </section>
+
+  <section class="scene benefit" id="b2" style="--c1:#fbbf24; --c2:#d97706; --c1s:rgba(251,191,36,.38)">
+    <div class="glow"></div>
+    <div class="pill">Beneficio <b>2</b> de 6</div>
+    <div class="itile"><i data-icon="bag"></i></div>
+    <h2 class="h2 btitle">Descuentos</h2>
+    <p class="lead bdesc">Descuentos especiales que solo les ofrezco a mis suscriptores.</p>
+    <div class="extra"><div class="coupon"><span class="pct">%</span><span>Precios especiales<br>solo para ti</span></div></div>
+  </section>
+
+  <section class="scene benefit" id="b3" style="--c1:#fb7185; --c2:#e11d48; --c1s:rgba(251,113,133,.4)">
+    <div class="glow"></div>
+    <div class="pill">Beneficio <b>3</b> de 6</div>
+    <div class="itile"><i data-icon="video"></i></div>
+    <h2 class="h2 btitle">Videos en vivo</h2>
+    <p class="lead bdesc">Transmisiones en vivo que solo pueden ver mis suscriptores.</p>
+    <div class="extra"><div class="chip live"><span class="dot" id="livedot"></span>EN VIVO</div><div class="chip">Solo suscriptores</div></div>
+  </section>
+
+  <section class="scene benefit" id="b4" style="--c1:#c084fc; --c2:#7c3aed; --c1s:rgba(192,132,252,.4)">
+    <div class="glow"></div>
+    <div class="pill">Beneficio <b>4</b> de 6</div>
+    <div class="itile"><i data-icon="sticker"></i></div>
+    <h2 class="h2 btitle">Stickers personalizados</h2>
+    <p class="lead bdesc">Stickers creados por mí para que los uses en los comentarios.</p>
+    <div class="extra stickers">
+      <div class="stkw"><div class="stk"><span class="emo">😍</span></div></div>
+      <div class="stkw"><div class="stk"><span class="emo">🔥</span></div></div>
+      <div class="stkw"><div class="stk"><span class="emo">🙌</span></div></div>
+    </div>
+  </section>
+
+  <section class="scene benefit" id="b5" style="--c1:#60a5fa; --c2:#2563eb; --c1s:rgba(96,165,250,.42)">
+    <div class="glow"></div>
+    <div class="pill">Beneficio <b>5</b> de 6</div>
+    <div class="itile"><i data-icon="chat"></i></div>
+    <h2 class="h2 btitle">Comentarios destacados</h2>
+    <p class="lead bdesc">Tus comentarios resaltan en mis videos en vivo públicos.</p>
+    <div class="extra">
+      <div class="comment">
+        <div class="avatar"><i data-icon="user"></i></div>
+        <div>
+          <div class="cname">Tú <span class="minibadge"><i data-icon="badge"></i></span> <span class="tagdest">DESTACADO</span></div>
+          <div class="ctext">¡Aquí presente! 🙌</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="scene benefit" id="b6" style="--c1:#3fb57a; --c2:#0a69a3; --c1s:rgba(40,170,150,.45)">
+    <div class="glow"></div>
+    <div class="pill">Beneficio <b>6</b> de 6</div>
+    <div class="itile"><i data-icon="badge"></i></div>
+    <h2 class="h2 btitle">Insignia de suscriptor</h2>
+    <p class="lead bdesc">Una insignia junto a tu nombre que muestra que eres parte de la comunidad.</p>
+    <div class="extra">
+      <div class="namerow"><div class="avatar"><i data-icon="user"></i></div>Tu nombre<span class="minibadge" id="namebadge"><i data-icon="badge"></i></span></div>
+    </div>
+  </section>
+
+  <div id="dots"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+
+  <!-- 9. Resumen y precio -->
+  <section class="scene" id="s-resumen">
+    <h2 class="h2" id="res-t" style="font-size:80px">Tu suscripción <span class="grad">incluye</span></h2>
+    <div class="list" id="res-list">
+      <div class="row" style="--c1:#34d3b4; --c2:#0e7f74"><div class="ri"><i data-icon="lock"></i></div><span>Contenido exclusivo</span><div class="chk"><i data-icon="check"></i></div></div>
+      <div class="row" style="--c1:#fbbf24; --c2:#d97706"><div class="ri"><i data-icon="bag"></i></div><span>Descuentos</span><div class="chk"><i data-icon="check"></i></div></div>
+      <div class="row" style="--c1:#fb7185; --c2:#e11d48"><div class="ri"><i data-icon="video"></i></div><span>Videos en vivo</span><div class="chk"><i data-icon="check"></i></div></div>
+      <div class="row" style="--c1:#c084fc; --c2:#7c3aed"><div class="ri"><i data-icon="sticker"></i></div><span>Stickers personalizados</span><div class="chk"><i data-icon="check"></i></div></div>
+      <div class="row" style="--c1:#60a5fa; --c2:#2563eb"><div class="ri"><i data-icon="chat"></i></div><span>Comentarios destacados</span><div class="chk"><i data-icon="check"></i></div></div>
+      <div class="row" style="--c1:#3fb57a; --c2:#0a69a3"><div class="ri"><i data-icon="badge"></i></div><span>Insignia de suscriptor</span><div class="chk"><i data-icon="check"></i></div></div>
+    </div>
+    <div class="price" id="res-price">
+      <div class="pre">Todo por solo</div>
+      <div class="amount"><span class="grad">$<span id="amt">2.000</span></span><small> al mes</small></div>
+    </div>
+  </section>
+
+  <!-- 10. Agradecimiento -->
+  <section class="scene" id="s-gracias">
+    <svg class="heart" id="heart" viewBox="0 0 24 24">
+      <defs><linearGradient id="hg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5fd39a"/><stop offset=".5" stop-color="#36c2c9"/><stop offset="1" stop-color="#3b8cff"/></linearGradient></defs>
+      <path fill="url(#hg)" d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+    </svg>
+    <p class="h2" id="gr-1" style="font-size:80px; margin-bottom:30px">Tu apoyo significa <span class="grad">muchísimo</span> para mí</p>
+    <p class="lead" id="gr-2">Me ayuda a seguir creando contenido para ti.</p>
+    <p class="h2" id="gr-3" style="font-size:78px; margin-top:56px"><span class="grad">¡Gracias de corazón!</span></p>
+  </section>
+
+  <!-- 11. Llamado a la acción -->
+  <section class="scene" id="s-cta">
+    <h1 class="h1" id="cta-1">¿Te animas? <span class="emo">😊</span></h1>
+    <p class="lead ctalead" id="cta-2">Toca <b>Suscribirse</b> en <b>Pasiones en Pantalla</b></p>
+    <div class="btnwrap" id="cta-btnwrap">
+      <div class="btnring" id="cta-ring"></div>
+      <div class="fbbtn" id="cta-btn"><i data-icon="badge"></i>Suscribirse</div>
+      <div class="tap" style="transform: translate(150px, 22px)">
+        <div class="burst" id="confetti"></div>
+        <div class="ripple" id="ripple"></div>
+        <div class="hand" id="hand">👆</div>
+      </div>
+    </div>
+    <p class="h2 ctaend" id="cta-3" style="font-size:84px"><span class="grad">¡Te espero!</span> <span class="emo">💙</span></p>
+  </section>
+
+  <div class="grain"></div>
+</div>
+
+<script src="motor.js"></script>
+<script>
+  // 1. Saludo (0 – 3.75)
+  scene('#s-hola', 0.05, 3.75);
+  pop('#hola-tile', 0.15, 0.8);
+  loop('#hola-ring', [{ transform: 'scale(1)', opacity: 0 }, { transform: 'scale(1)', opacity: .8, offset: .08 }, { transform: 'scale(1.45)', opacity: 0 }], 0.7, 1.6, 'ease-out');
+  fadeUp('#hola-1', 0.45);
+  anim('#wave', [{ transform: 'rotate(0)' }, { transform: 'rotate(20deg)' }, { transform: 'rotate(-8deg)' }, { transform: 'rotate(20deg)' }, { transform: 'rotate(0)' }], 0.8, 1.1, { iterations: 2, easing: 'ease-in-out' });
+  $('#wave').style.transformOrigin = '70% 80%';
+  fadeUp('#hola-2', 0.95);
+  fadeUp('#hola-3', 1.2);
+
+  // 2. Pregunta (3.75 – 6)
+  scene('#s-que', 3.75, 6.0);
+  pop('#que-1', 3.72, 0.6, -4);
+  fadeUp('#que-2', 4.1);
+  loop('#point', [{ transform: 'translateY(0)' }, { transform: 'translateY(16px)' }], 4.5, 0.4, 'ease-in-out', 'alternate');
+
+  // 3–8. Beneficios, uno por compás (3 s cada uno)
+  const B0 = 6, BD = 3;
+  document.querySelectorAll('.benefit').forEach((sc, i) => {
+    const s = B0 + i * BD;
+    scene(sc, s, s + BD);
+    fadeUp(sc.querySelector('.pill'), s + 0.02, 0.5, 30);
+    pop(sc.querySelector('.itile'), s + 0.05, 0.7);
+    fadeUp(sc.querySelector('.btitle'), s + 0.22);
+    fadeUp(sc.querySelector('.bdesc'), s + 0.42);
+    const ex = sc.querySelector('.extra');
+    if (ex.classList.contains('stickers')) {
+      ex.querySelectorAll('.stkw').forEach((w, k) => {
+        pop(w, s + 0.7 + k * 0.14, 0.6, k === 1 ? 10 : -15);
+        loop(w.querySelector('.emo'), [{ transform: 'scale(1)' }, { transform: 'scale(1.1)' }], s + 1.3 + k * 0.2, 0.5, 'ease-in-out', 'alternate');
+      });
+    } else {
+      fadeUp(ex, s + 0.72, 0.6, 40);
+    }
+    anim(sc.querySelector('.glow'), [{ transform: 'scale(.6)' }, { transform: 'scale(1)' }], s, 1.2);
+  });
+  loop('#livedot', [{ opacity: 1, transform: 'scale(1)' }, { opacity: .25, transform: 'scale(.75)' }], 9, 0.5, 'ease-in-out', 'alternate');
+  pop('#namebadge', 21 + 1.1, 0.7, -30);
+
+  anim('#dots', [{ opacity: 0 }, { opacity: 1 }], 5.9, 0.3);
+  anim('#dots', [{ opacity: 1 }, { opacity: 0 }], 23.7, 0.3, { fill: 'forwards' });
+  document.querySelectorAll('#dots i').forEach((d, i) => {
+    const on = [{ width: '18px', background: 'rgba(255,255,255,.25)' }, { width: '58px', background: '#ffffff' }];
+    anim(d, on, B0 + i * BD - 0.05, 0.4);
+    if (i < 5) anim(d, [...on].reverse(), B0 + (i + 1) * BD - 0.05, 0.4, { fill: 'forwards' });
+  });
+
+  // 9. Resumen y precio (24 – 30)
+  scene('#s-resumen', 24, 30);
+  fadeUp('#res-t', 24.05);
+  fadeUp('#res-list', 24.15, 0.5, 30);
+  document.querySelectorAll('#res-list .row').forEach((r, i) => {
+    anim(r, [{ opacity: 0, transform: 'translateX(-50px)' }, { opacity: 1, transform: 'translateX(0)' }], 24.3 + i * 0.16, 0.5);
+    pop(r.querySelector('.chk'), 24.45 + i * 0.16, 0.45, -20);
+  });
+  pop('#res-price', 25.6, 0.7, -3);
+  const amt = $('#amt');
+  HOOKS.push(t => {
+    const p = Math.min(Math.max((t - 25.7) / 0.9, 0), 1);
+    const v = Math.round(2000 * (1 - Math.pow(1 - p, 3)) / 50) * 50;
+    amt.textContent = String(v).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  });
+
+  // 10. Agradecimiento (30 – 34.5)
+  scene('#s-gracias', 30, 34.5);
+  pop('#heart', 30.05, 0.8, -10);
+  fadeUp('#gr-1', 30.3);
+  fadeUp('#gr-2', 31.0);
+  fadeUp('#gr-3', 31.8);
+  loop('#heart path', [{ transform: 'scale(1)' }, { transform: 'scale(1.1)', offset: .15 }, { transform: 'scale(1)', offset: .3 }, { transform: 'scale(1.08)', offset: .45 }, { transform: 'scale(1)', offset: .6 }], 30.9, 1.2, 'ease-in-out');
+  $('#heart path').style.transformOrigin = '12px 12px';
+
+  // 11. Llamado a la acción (34.5 – fin)
+  scene('#s-cta', 34.5);
+  fadeUp('#cta-1', 34.6);
+  fadeUp('#cta-2', 35.0);
+  pop('#cta-btnwrap', 35.3, 0.7, -4);
+  anim('#hand', [{ opacity: 0, transform: 'translate(170px,420px) rotate(-14deg)' }, { opacity: 1, transform: 'translate(0,0) rotate(0deg)' }], 35.9, 0.9);
+  anim('#hand', [{ transform: 'scale(1)' }, { transform: 'scale(.86)', offset: .4 }, { transform: 'scale(1)' }], 36.95, 0.35, { fill: 'forwards', easing: 'ease-in-out' });
+  anim('#hand', [{ opacity: 1, transform: 'translate(0,0)' }, { opacity: 0, transform: 'translate(60px,220px)' }], 37.5, 0.45, { fill: 'forwards', easing: EASE.in });
+  anim('#cta-btn', [{ transform: 'scale(1)' }, { transform: 'scale(.94)', offset: .4 }, { transform: 'scale(1)' }], 36.95, 0.35, { easing: 'ease-in-out' });
+  anim('#ripple', [{ opacity: .7, transform: 'scale(0)' }, { opacity: 0, transform: 'scale(7)' }], 37.05, 0.7, { fill: 'forwards' });
+  confetti('#confetti', 37.05, 34);
+  loop('#cta-ring', [{ transform: 'scale(1)', opacity: 0 }, { transform: 'scale(1)', opacity: .9, offset: .08 }, { transform: 'scale(1.12,1.45)', opacity: 0 }], 38.0, 1.3, 'ease-out');
+  fadeUp('#cta-3', 37.9);
+
+  start(40.5);
+</script>
+</body>
+</html>

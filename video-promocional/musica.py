@@ -1,9 +1,10 @@
-"""Música de fondo y efectos para el video promocional (40.5 s, 80 BPM, re mayor).
+"""Música de fondo y efectos para los videos (80 BPM, re mayor).
 
-Cada compás dura 3 s, igual que cada beneficio del video, así los cambios de
-acorde caen justo cuando aparece un beneficio nuevo.
+Cada compás dura 3 s, igual que cada beneficio del video promocional, así los
+cambios de acorde caen justo cuando aparece un beneficio nuevo.
 
-    python3 musica.py salida.wav
+    python3 musica.py promocional salida.wav
+    python3 musica.py agradecimiento salida.wav
 """
 import sys
 import wave
@@ -11,27 +12,13 @@ import wave
 import numpy as np
 
 SR = 48000
-DUR = 40.5
 BEAT = 0.75
 BAR = 3.0
-N = int(SR * DUR)
 rng = np.random.default_rng(3)
-
-music = np.zeros((2, N))  # pad + arpegio + efectos (pasan por la reverberación)
-dry = np.zeros((2, N))    # batería y bajo (sin reverberación)
 
 
 def midi(m):
     return 440.0 * 2 ** ((m - 69) / 12)
-
-
-def add(buf, t, sig, gain=1.0, pan=0.0):
-    i = int(t * SR)
-    if i >= N:
-        return
-    sig = sig[: N - i]
-    buf[0, i:i + len(sig)] += sig * gain * np.sqrt(0.5 * (1 - pan))
-    buf[1, i:i + len(sig)] += sig * gain * np.sqrt(0.5 * (1 + pan))
 
 
 def tt(d):
@@ -47,8 +34,6 @@ PAD = [[50, 57, 62, 66], [52, 57, 61, 64], [54, 59, 62, 66], [55, 59, 62, 67]]
 ARP = [[62, 66, 69, 74], [61, 64, 69, 73], [62, 66, 71, 74], [62, 67, 71, 74]]
 BASS = [38, 33, 35, 31]
 PATTERN = [0, 1, 2, 3, 2, 1, 2, 1]
-
-N_BARS = 13  # 0–39 s; luego un acorde final hasta 40.5 s
 
 
 def pad_note(m, d):
@@ -120,82 +105,129 @@ def tap_sfx():
         + rng.standard_normal(len(t)) * np.exp(-t / 0.006) * 0.3
 
 
-# ---- Música ----
-for b in range(N_BARS):
-    c = b % 4
-    start = b * BAR
-    last = b == N_BARS - 1
-    length = (DUR - start) if last else BAR + 0.9
-    for k, m in enumerate(PAD[c]):
-        add(music, start, pad_note(m, length), 0.035, pan=(-0.4, 0.4, -0.2, 0.2)[k])
-    calm = start < 6 or 30 <= start < 34.5
-    for e in range(8):
-        if calm and e % 2:
-            continue
-        add(music, start + e * BEAT / 2, pluck(ARP[c][PATTERN[e]]), 0.075 if e % 2 else 0.1,
-            pan=(-0.35 if e % 2 else 0.35))
-    if start >= 6:
-        add(dry, start, bass_note(BASS[c], 3.0 if last else length - 0.6), 0.16)
+class Mix:
+    def __init__(self, dur):
+        self.dur = dur
+        self.n = int(dur * SR)
+        self.music = np.zeros((2, self.n))  # pad + arpegio + efectos (pasan por la reverberación)
+        self.dry = np.zeros((2, self.n))    # batería y bajo (sin reverberación)
 
-# Final: acorde de Re arpegiado que se deja sonar
-END = N_BARS * BAR
-for k, m in enumerate(ARP[0] + [78]):
-    add(music, END + k * 0.1, pluck(m, DUR - END), 0.08, pan=-0.3 + 0.15 * k)
-add(dry, END, bass_note(BASS[0], DUR - END), 0.14)
+    def add(self, buf, t, sig, gain=1.0, pan=0.0):
+        i = int(t * SR)
+        if i >= self.n:
+            return
+        sig = sig[: self.n - i]
+        buf[0, i:i + len(sig)] += sig * gain * np.sqrt(0.5 * (1 - pan))
+        buf[1, i:i + len(sig)] += sig * gain * np.sqrt(0.5 * (1 + pan))
 
-# Batería: entra con los beneficios, se retira en el agradecimiento y vuelve en el cierre
-for b in range(N_BARS):
-    start = b * BAR
-    if start < 6:
-        continue
-    for beat in range(4):
-        tb = start + beat * BEAT
-        if 30 <= tb < 34.5:
-            continue
-        if beat == 0:
-            add(dry, tb, kick(), 0.42)
-        if beat == 2:
-            add(dry, tb + BEAT / 2, kick(), 0.32)
-        if beat in (1, 3):
-            add(dry, tb, snare(), 0.12)
-        add(dry, tb + BEAT / 2, hat(), 0.05, pan=0.3)
-        add(dry, tb, hat(), 0.025, pan=0.3)
-add(dry, END, kick(), 0.4)
+    def song(self, n_bars, calm, drums, bass):
+        """`n_bars` compases y un acorde final que suena hasta el final del video.
+        `calm(t)`: arpegio a negras; `drums(t)`: batería en ese tiempo; `bass(t)`: bajo en ese compás."""
+        music, dry, add, dur = self.music, self.dry, self.add, self.dur
+        for b in range(n_bars):
+            c = b % 4
+            start = b * BAR
+            last = b == n_bars - 1
+            length = (dur - start) if last else BAR + 0.9
+            for k, m in enumerate(PAD[c]):
+                add(music, start, pad_note(m, length), 0.035, pan=(-0.4, 0.4, -0.2, 0.2)[k])
+            for e in range(8):
+                te = start + e * BEAT / 2
+                if calm(te) and e % 2:
+                    continue
+                add(music, te, pluck(ARP[c][PATTERN[e]]), 0.075 if e % 2 else 0.1, pan=(-0.35 if e % 2 else 0.35))
+            if bass(start):
+                add(dry, start, bass_note(BASS[c], 3.0 if last else length - 0.6), 0.16)
+            for beat in range(4):
+                tb = start + beat * BEAT
+                if not drums(tb):
+                    continue
+                if beat == 0:
+                    add(dry, tb, kick(), 0.42)
+                if beat == 2:
+                    add(dry, tb + BEAT / 2, kick(), 0.32)
+                if beat in (1, 3):
+                    add(dry, tb, snare(), 0.12)
+                add(dry, tb + BEAT / 2, hat(), 0.05, pan=0.3)
+                add(dry, tb, hat(), 0.025, pan=0.3)
 
-# ---- Efectos sincronizados con la animación ----
-add(music, 0.15, pop_sfx(), 0.12)
-for t in (3.6, 5.85, 23.85, 34.35):
-    add(music, t, whoosh(), 0.05)
-for i in range(6):
-    add(music, 6.05 + 3 * i, pop_sfx(), 0.11, pan=(-0.2 if i % 2 else 0.2))
-for i in range(6):
-    add(music, 24.45 + 0.16 * i, bell(1568 + 120 * i, 0.4, 0.06), 0.05)
-add(music, 26.6, bell(midi(86), 1.6, 0.5), 0.07)
-add(music, 26.6, bell(midi(90), 1.6, 0.5), 0.05)
-add(music, 30.05, pop_sfx(), 0.08)
-add(dry, 36.98, tap_sfx(), 0.3)
-for k, m in enumerate([86, 88, 90, 93, 95, 98]):
-    add(music, 37.05 + 0.045 * k, bell(midi(m), 0.8, 0.18), 0.045, pan=-0.5 + 0.2 * k)
+        # Final: acorde de Re arpegiado que se deja sonar
+        end = n_bars * BAR
+        for k, m in enumerate(ARP[0] + [78]):
+            add(music, end + k * 0.1, pluck(m, dur - end), 0.08, pan=-0.3 + 0.15 * k)
+        add(dry, end, bass_note(BASS[0], dur - end), 0.14)
+        add(dry, end, kick(), 0.4)
 
-# ---- Reverberación sencilla (convolución con ruido que decae) ----
-ir_t = tt(2.2)
-ir = np.stack([smooth(rng.standard_normal(len(ir_t)), 6) * np.exp(-ir_t / 0.55) for _ in range(2)])
-ir[:, : int(0.018 * SR)] = 0
-ir /= np.sqrt((ir ** 2).sum(axis=1, keepdims=True))
-size = 1 << int(np.ceil(np.log2(N + ir.shape[1])))
-wet = np.fft.irfft(np.fft.rfft(music, size) * np.fft.rfft(ir, size), size)[:, :N]
+    def sparkle(self, t, notes=(86, 88, 90, 93, 95, 98)):
+        for k, m in enumerate(notes):
+            self.add(self.music, t + 0.045 * k, bell(midi(m), 0.8, 0.18), 0.045, pan=-0.5 + 0.2 * k)
 
-mix = music + dry + wet * 0.35
-fade_in = np.minimum(np.arange(N) / (0.2 * SR), 1)
-fade_out = np.clip((DUR - np.arange(N) / SR) / 1.2, 0, 1)
-mix *= fade_in * fade_out
-mix = np.tanh(mix * 1.3) / 1.3
-mix *= 0.89 / np.abs(mix).max()
+    def ticks(self, t, count, step):
+        for i in range(count):
+            self.add(self.music, t + step * i, bell(1568 + 120 * i, 0.4, 0.06), 0.05)
 
-out = sys.argv[1] if len(sys.argv) > 1 else "musica.wav"
-with wave.open(out, "wb") as w:
-    w.setnchannels(2)
-    w.setsampwidth(2)
-    w.setframerate(SR)
-    w.writeframes((mix.T * 32767).astype("<i2").tobytes())
-print("listo:", out)
+    def render(self, out):
+        # Reverberación sencilla (convolución con ruido que decae)
+        ir_t = tt(2.2)
+        ir = np.stack([smooth(rng.standard_normal(len(ir_t)), 6) * np.exp(-ir_t / 0.55) for _ in range(2)])
+        ir[:, : int(0.018 * SR)] = 0
+        ir /= np.sqrt((ir ** 2).sum(axis=1, keepdims=True))
+        size = 1 << int(np.ceil(np.log2(self.n + ir.shape[1])))
+        wet = np.fft.irfft(np.fft.rfft(self.music, size) * np.fft.rfft(ir, size), size)[:, : self.n]
+
+        mix = self.music + self.dry + wet * 0.35
+        t = np.arange(self.n) / SR
+        mix *= np.minimum(t / 0.2, 1) * np.clip((self.dur - t) / 1.2, 0, 1)
+        mix = np.tanh(mix * 1.3) / 1.3
+        mix *= 0.89 / np.abs(mix).max()
+        with wave.open(out, "wb") as w:
+            w.setnchannels(2)
+            w.setsampwidth(2)
+            w.setframerate(SR)
+            w.writeframes((mix.T * 32767).astype("<i2").tobytes())
+
+
+def promocional():
+    mx = Mix(40.5)
+    # Intro tranquila, batería con los beneficios, pausa en el agradecimiento y vuelve en el cierre
+    mx.song(13, calm=lambda t: t < 6 or 30 <= t < 34.5,
+            drums=lambda t: t >= 6 and not 30 <= t < 34.5, bass=lambda t: t >= 6)
+    add, music, dry = mx.add, mx.music, mx.dry
+    add(music, 0.15, pop_sfx(), 0.12)
+    for t in (3.6, 5.85, 23.85, 34.35):
+        add(music, t, whoosh(), 0.05)
+    for i in range(6):
+        add(music, 6.05 + 3 * i, pop_sfx(), 0.11, pan=(-0.2 if i % 2 else 0.2))
+    mx.ticks(24.45, 6, 0.16)
+    add(music, 26.6, bell(midi(86), 1.6, 0.5), 0.07)
+    add(music, 26.6, bell(midi(90), 1.6, 0.5), 0.05)
+    add(music, 30.05, pop_sfx(), 0.08)
+    add(dry, 36.98, tap_sfx(), 0.3)
+    mx.sparkle(37.05)
+    return mx
+
+
+def agradecimiento():
+    mx = Mix(25.5)
+    # Arranca con fiesta, baja para el "gracias" y vuelve a subir
+    mx.song(8, calm=lambda t: 4.5 <= t < 9, drums=lambda t: not 4.5 <= t < 9, bass=lambda t: True)
+    add, music = mx.add, mx.music
+    add(music, 0.15, pop_sfx(), 0.12)
+    mx.sparkle(0.3)
+    add(music, 1.35, bell(midi(86), 1.4, 0.4), 0.05)
+    for t in (4.35, 8.85, 14.85, 19.35):
+        add(music, t, whoosh(), 0.05)
+    add(music, 4.55, pop_sfx(), 0.08)
+    mx.ticks(9.45, 6, 0.22)
+    add(music, 15.05, pop_sfx(), 0.1)
+    add(music, 16.2, pop_sfx(), 0.1)
+    mx.sparkle(16.3, (90, 93, 95, 98))
+    add(music, 19.55, pop_sfx(), 0.12)
+    mx.sparkle(19.75)
+    return mx
+
+
+if __name__ == "__main__":
+    video, out = sys.argv[1], sys.argv[2]
+    {"promocional": promocional, "agradecimiento": agradecimiento}[video]().render(out)
+    print("listo:", out)
