@@ -49,21 +49,21 @@
   <path d="M60,690 V560 H300 V110 H544" fill="none" stroke="#333" stroke-width="14" stroke-linejoin="round"/>
   <path d="M60,690 V560 H300 V110 H544" fill="none" stroke="#f3ead0" stroke-width="9" stroke-linejoin="round"/>
   <!-- flow arrows on supply -->
-  <line x1="60" y1="650" x2="60" y2="610" stroke="#b45309" stroke-width="2" marker-end="url(#arrR)"/>
-  <line x1="120" y1="560" x2="150" y2="560" stroke="#b45309" stroke-width="2" marker-end="url(#arrR)"/>
+  <line x1="60" y1="684" x2="60" y2="652" stroke="#b45309" stroke-width="2" marker-end="url(#arrR)"/>
+  <line x1="208" y1="560" x2="248" y2="560" stroke="#b45309" stroke-width="2" marker-end="url(#arrR)"/>
   <line x1="300" y1="420" x2="300" y2="380" stroke="#b45309" stroke-width="2" marker-end="url(#arrR)"/>
   <line x1="380" y1="110" x2="420" y2="110" stroke="#b45309" stroke-width="2" marker-end="url(#arrR)"/>
 
-  <!-- red ball valve -->
-  <rect x="150" y="548" width="44" height="24" rx="4" fill="#f4f4f4" stroke="#333" stroke-width="2"/>
-  <circle cx="172" cy="560" r="9" fill="#d62828" stroke="#7a1010" stroke-width="2"/>
-  <rect x="166" y="524" width="12" height="26" rx="3" fill="#d62828" stroke="#7a1010"/>
+  <!-- check valve (vertical, arrow up) -->
+  <rect x="44" y="594" width="32" height="50" rx="7" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2"/>
+  <path d="M60,604 L50,630 L70,630 Z" fill="#2e7d32"/>
+  <line x1="50" y1="604" x2="70" y2="604" stroke="#2e7d32" stroke-width="3"/>
   <!-- union -->
-  <rect x="214" y="550" width="14" height="20" fill="#f4f4f4" stroke="#333" stroke-width="2"/>
-  <!-- check valve -->
-  <rect x="238" y="546" width="46" height="28" rx="6" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2"/>
-  <path d="M250,552 L270,560 L250,568 Z" fill="#2e7d32"/>
-  <line x1="272" y1="552" x2="272" y2="568" stroke="#2e7d32" stroke-width="3"/>
+  <rect x="96" y="550" width="14" height="20" fill="#f4f4f4" stroke="#333" stroke-width="2"/>
+  <!-- red ball valve -->
+  <rect x="140" y="548" width="44" height="24" rx="4" fill="#f4f4f4" stroke="#333" stroke-width="2"/>
+  <circle cx="162" cy="560" r="9" fill="#d62828" stroke="#7a1010" stroke-width="2"/>
+  <rect x="156" y="524" width="12" height="26" rx="3" fill="#d62828" stroke="#7a1010"/>
 
   <!-- outlet -->
   <path d="M877,425 H950 V660" fill="none" stroke="#333" stroke-width="14" stroke-linejoin="round"/>
@@ -74,20 +74,21 @@
 
   <!-- callouts -->
   <g font-size="13" font-weight="bold" fill="#fff" text-anchor="middle">
-    <circle cx="35" cy="620" r="12" fill="#222"/><text x="35" y="625">1</text>
-    <circle cx="172" cy="506" r="12" fill="#222"/><text x="172" y="511">2</text>
-    <circle cx="261" cy="598" r="12" fill="#222"/><text x="261" y="603">3</text>
-    <circle cx="330" cy="300" r="12" fill="#222"/><text x="330" y="305">4</text>
-    <circle cx="640" cy="82" r="12" fill="#222"/><text x="640" y="87">5</text>
-    <circle cx="500" cy="190" r="12" fill="#222"/><text x="500" y="195">6</text>
-    <circle cx="911" cy="392" r="12" fill="#222"/><text x="911" y="397">7</text>
+    <circle cx="30" cy="668" r="12" fill="#222"/><text x="30" y="673">1</text>
+    <circle cx="100" cy="620" r="12" fill="#222"/><text x="100" y="625">2</text>
+        <circle cx="103" cy="524" r="12" fill="#222"/><text x="103" y="529">3</text>
+    <circle cx="162" cy="506" r="12" fill="#222"/><text x="162" y="511">4</text>
+    <circle cx="330" cy="300" r="12" fill="#222"/><text x="330" y="305">5</text>
+    <circle cx="640" cy="82" r="12" fill="#222"/><text x="640" y="87">6</text>
+    <circle cx="500" cy="190" r="12" fill="#222"/><text x="500" y="195">7</text>
+    <circle cx="911" cy="392" r="12" fill="#222"/><text x="911" y="397">8</text>
   </g>
 
   <!-- legend -->
   <rect x="20" y="715" width="960" height="58" fill="#f7f7f7" stroke="#ccc"/>
   <g font-size="11.5" fill="#222">
-    <text x="30" y="732"><tspan font-weight="bold">1</tspan> Suministro (desde tanque inferior/bomba)   <tspan font-weight="bold">2</tspan> VÁLVULA ROJA: única entrada de agua   <tspan font-weight="bold">3</tspan> Válvula cheque + unión universal</text>
-    <text x="30" y="750"><tspan font-weight="bold">4</tspan> Tubo ascendente: entra al tanque por ARRIBA   <tspan font-weight="bold">5</tspan> Válvula de flotador: cierra el llenado   <tspan font-weight="bold">6</tspan> Rebose independiente a desagüe</text>
-    <text x="30" y="767"><tspan font-weight="bold">7</tspan> Salida de fondo con llave de bronce → distribución. NO se une con la línea de llenado (1–4).   Flechas naranjas = sentido del agua.</text>
+    <text x="30" y="731"><tspan font-weight="bold">1</tspan> Suministro desde abajo   <tspan font-weight="bold">2</tspan> Válvula CHECK vertical, flecha hacia ARRIBA (hacia el tanque)   <tspan font-weight="bold">3</tspan> Unión universal   <tspan font-weight="bold">4</tspan> VÁLVULA ROJA: abre/cierra el llenado</text>
+    <text x="30" y="749"><tspan font-weight="bold">5</tspan> Tubo ascendente: entra por ARRIBA   <tspan font-weight="bold">6</tspan> Válvula de flotador: cierra el llenado   <tspan font-weight="bold">7</tspan> Rebose independiente a desagüe</text>
+    <text x="30" y="767"><tspan font-weight="bold">8</tspan> Salida de fondo con llave de bronce → distribución. NO se une con la línea de llenado (1–5).   Flechas naranjas = sentido del agua.</text>
   </g>
 </svg>
