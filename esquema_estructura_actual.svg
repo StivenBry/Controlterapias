@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 1360" font-family="Arial, Helvetica, sans-serif">
+<defs>
+<marker id="o" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#b45309"/></marker>
+<marker id="g" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#2e7d32"/></marker>
+<pattern id="h" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" stroke="#999"/></pattern>
+</defs>
+<rect width="820" height="1360" fill="#fff"/>
+<text x="410" y="36" text-anchor="middle" font-size="23" font-weight="bold" fill="#222">Tu instalación tal como está en el video</text>
+<text x="410" y="58" text-anchor="middle" font-size="13" fill="#555">La estructura NO cambia: solo se corrigen las dos válvulas marcadas</text>
+<rect x="20" y="1110" width="780" height="14" fill="url(#h)" stroke="#777"/>
+<line x1="20" y1="1110" x2="800" y2="1110" stroke="#444" stroke-width="2"/>
+<rect x="460" y="512" width="40" height="598" fill="#d9d9d9" stroke="#555"/>
+<rect x="740" y="512" width="40" height="598" fill="#d9d9d9" stroke="#555"/>
+<rect x="440" y="480" width="360" height="32" fill="#bdbdbd" stroke="#555"/>
+<text x="620" y="501" text-anchor="middle" font-size="11" fill="#333">losa</text>
+<rect x="520" y="100" width="260" height="382" rx="14" fill="#dcebfa" stroke="#1e5aa8" stroke-width="3"/>
+<rect x="523" y="205" width="254" height="274" fill="#8ec1f0"/>
+<line x1="523" y1="205" x2="777" y2="205" stroke="#1e5aa8" stroke-width="2" stroke-dasharray="6 4"/>
+<text x="650" y="360" text-anchor="middle" font-size="20" font-weight="bold" fill="#12457f">TANQUE</text>
+<path d="M90,1030 V140 H520" fill="none" stroke="#333" stroke-width="14" stroke-linejoin="round" stroke-linecap="butt"/><path d="M90,1030 V140 H520" fill="none" stroke="#f3ead0" stroke-width="9" stroke-linejoin="round"/><path d="M90,700 H210 V950 H330" fill="none" stroke="#333" stroke-width="14" stroke-linejoin="round" stroke-linecap="butt"/><path d="M90,700 H210 V950 H330" fill="none" stroke="#f3ead0" stroke-width="9" stroke-linejoin="round"/><path d="M330,950 V462 H520" fill="none" stroke="#333" stroke-width="14" stroke-linejoin="round" stroke-linecap="butt"/><path d="M330,950 V462 H520" fill="none" stroke="#f3ead0" stroke-width="9" stroke-linejoin="round"/><path d="M330,950 H430 V1110" fill="none" stroke="#333" stroke-width="14" stroke-linejoin="round" stroke-linecap="butt"/><path d="M330,950 H430 V1110" fill="none" stroke="#f3ead0" stroke-width="9" stroke-linejoin="round"/><path d="M90,1030 H370 V1110" fill="none" stroke="#333" stroke-width="14" stroke-linejoin="round" stroke-linecap="butt"/><path d="M90,1030 H370 V1110" fill="none" stroke="#f3ead0" stroke-width="9" stroke-linejoin="round"/>
+<!-- float valve -->
+<rect x="524" y="134" width="48" height="12" fill="#8a8a8a" stroke="#333"/>
+<line x1="572" y1="140" x2="632" y2="192" stroke="#333" stroke-width="3"/>
+<circle cx="644" cy="202" r="15" fill="#555" stroke="#222" stroke-width="2"/>
+<!-- gray tee stub -->
+<rect x="458" y="144" width="14" height="26" fill="#8a8a8a" stroke="#333"/>
+<!-- red valve on supply -->
+<rect x="196" y="1018" width="44" height="24" rx="4" fill="#f4f4f4" stroke="#333" stroke-width="2"/>
+<circle cx="218" cy="1030" r="9" fill="#d62828" stroke="#7a1010" stroke-width="2"/>
+<rect x="212" y="990" width="12" height="30" rx="3" fill="#d62828" stroke="#7a1010"/>
+<!-- check valve (brass) arrow points WEST (out of tank) -->
+<rect x="400" y="446" width="58" height="32" rx="7" fill="#e8c35a" stroke="#6b5410" stroke-width="2"/>
+<path d="M412,462 L432,452 L432,472 Z" fill="#6b5410"/>
+<!-- blocked arrow -->
+<line x1="355" y1="425" x2="420" y2="425" stroke="#d62828" stroke-width="4" marker-end="url(#o)"/>
+<g stroke="#d62828" stroke-width="6" stroke-linecap="round"><line x1="424" y1="412" x2="442" y2="438"/><line x1="442" y1="412" x2="424" y2="438"/></g>
+<text x="300" y="386" font-size="12" font-weight="bold" fill="#a31515">PROHIBIDO: agua del suministro</text><text x="300" y="401" font-size="12" font-weight="bold" fill="#a31515">hacia el tanque</text>
+<!-- flow arrows supply (orange) -->
+<g stroke="#b45309" stroke-width="2.5" fill="none">
+<line x1="370" y1="1100" x2="370" y2="1065" marker-end="url(#o)"/>
+<line x1="330" y1="1030" x2="270" y2="1030" marker-end="url(#o)"/>
+<line x1="170" y1="1030" x2="125" y2="1030" marker-end="url(#o)"/>
+<line x1="90" y1="940" x2="90" y2="880" marker-end="url(#o)"/>
+<line x1="90" y1="500" x2="90" y2="440" marker-end="url(#o)"/>
+<line x1="200" y1="140" x2="270" y2="140" marker-end="url(#o)"/>
+<line x1="110" y1="700" x2="165" y2="700" marker-end="url(#o)"/>
+<line x1="210" y1="760" x2="210" y2="820" marker-end="url(#o)"/>
+<line x1="350" y1="950" x2="395" y2="950" marker-end="url(#o)"/>
+<line x1="430" y1="1010" x2="430" y2="1060" marker-end="url(#o)"/>
+</g>
+<line x1="395" y1="500" x2="395" y2="500" stroke="#2e7d32"/>
+<line x1="505" y1="500" x2="470" y2="500" stroke="#2e7d32" stroke-width="2.5" stroke-dasharray="5 4" marker-end="url(#g)"/>
+<!-- labels -->
+<text x="120" y="780" font-size="12" fill="#444">puente</text>
+<text x="105" y="934" font-size="12" fill="#444" transform="rotate(0)"> </text>
+<text x="340" y="940" font-size="12" fill="#444" text-anchor="start"></text>
+<rect x="444" y="1070" width="150" height="36" fill="#fff"/><text x="450" y="1087" font-size="13" font-weight="bold" fill="#333">A DISTRIBUCIÓN</text>
+<text x="450" y="1102" font-size="11" fill="#555">(baja por el pilar)</text>
+<text x="300" y="1096" font-size="13" font-weight="bold" fill="#333" text-anchor="end">SUMINISTRO</text>
+<text x="300" y="1109" font-size="11" fill="#555" text-anchor="end"></text>
+<g font-size="13" font-weight="bold" fill="#fff" text-anchor="middle">
+<circle cx="218" cy="962" r="0"/>
+<circle cx="150" cy="1002" r="12" fill="#222"/><text x="150" y="1007">1</text>
+<circle cx="429" cy="418" r="0"/>
+<circle cx="430" cy="500" r="12" fill="#c62828"/><text x="430" y="505">2</text>
+<circle cx="600" cy="150" r="12" fill="#c62828"/><text x="600" y="155">3</text>
+<circle cx="130" cy="300" r="12" fill="#222"/><text x="130" y="305">4</text>
+<circle cx="258" cy="840" r="12" fill="#222"/><text x="258" y="845">5</text>
+<circle cx="470" cy="190" r="12" fill="#222"/><text x="470" y="195">6</text>
+<circle cx="290" cy="640" r="12" fill="#222"/><text x="290" y="645">7</text>
+</g>
+<text x="515" y="600" font-size="12" fill="#2e7d32" font-weight="bold">sin suministro: el tanque</text>
+<text x="515" y="616" font-size="12" fill="#2e7d32" font-weight="bold">sale por la check</text>
+<rect x="20" y="1140" width="780" height="205" fill="#f7f7f7" stroke="#ccc"/>
+<g font-size="13" fill="#222">
+<text x="32" y="1162"><tspan font-weight="bold">1</tspan> Válvula roja: el agua del suministro entra por aquí (se queda igual)</text>
+<text x="32" y="1184" fill="#a31515" font-weight="bold">2 CORREGIR – Check de bronce en el fondo del tanque:</text>
+<text x="52" y="1202">debe cerrar contra el suministro. Si el agua entra al tanque por aquí,</text>
+<text x="52" y="1220">está sucia o dañada: ábrela (tapa lateral), límpiala o cámbiala.</text>
+<text x="32" y="1244" fill="#a31515" font-weight="bold">3 CORREGIR – Válvula de flotador: si con el brazo levantado a mano</text>
+<text x="52" y="1262">el agua sigue saliendo, cambia el empaque/asiento o la válvula.</text>
+<text x="32" y="1286"><tspan font-weight="bold">4</tspan> Tubo que sube a la entrada de arriba   <tspan font-weight="bold">5</tspan> Tubo que baja a la unión inferior   <tspan font-weight="bold">6</tspan> Tapón del tee: sin goteo</text>
+<text x="32" y="1308"><tspan font-weight="bold">7</tspan> Tubo vertical que sube a la check</text>
+<text x="32" y="1332" font-size="12" fill="#555">Esquema de conexiones, no a escala. Naranja = agua del suministro. Verde = agua del tanque.</text>
+</g>
+</svg>
